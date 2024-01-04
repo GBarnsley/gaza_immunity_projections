@@ -1,5 +1,9 @@
 #what diseases/vaccines are we modelling (meningitis not routinely given)
-vaccine_names <- c("diphtheria", "measles", "pertussis", "polio - wildtype", "polio - wildtype - vaccine-derived", "Hib disease", "pneumococcal disease", "rotavirus")
+vaccine_names <- c(
+    "diphtheria", "measles", "pertussis", "polio - wildtype",
+    "polio - vaccine-derived", "Hib disease", "pneumococcal disease", "rotavirus"
+)
+names(vaccine_names) <- vaccine_names
 
 #Force of Infection data
 #really we need to adjust this FoI for vaccinated/immune i.e. susceptibles actually have a much higher FoI than the average person
@@ -9,13 +13,16 @@ vaccine_names <- c("diphtheria", "measles", "pertussis", "polio - wildtype", "po
 #measles - few cases in 2020/2021
 #pertussis - few cases in 2022 but no data before seems to be tranmission in lebanon
 #polio - wildtype - no cases
-#Tuberculosis - cases from 2010 - 2022
+#polio - vaccine-derived - no cases
+#Hib disease - cases of meningitis suggests transmission
+#pneumococcal disease - will be tranmission but only meningitis cases?
+#rotavirus - no data (could use diarrhoea data?)
 
 foi <- list(
-    diphtheria = 0, polio - wildtype = 0
+    diphtheria = 0, `polio - wildtype` = 0, `polio - vaccine-derived` = 0, rotavirus = 0
 )
 tt_foi <- list(
-    diphtheria = 0, polio - wildtype = 0
+    diphtheria = 0, `polio - wildtype` = 0, `polio - vaccine-derived` = 0, rotavirus = 0
 )
 
 IR <- read_csv("data/raw/disease_IRs.csv", show_col_types = FALSE)
@@ -26,11 +33,10 @@ years <- as.numeric(names(IR)[-c(1:3)])
 IR <- tibble(
     location = locations,
     year = years,
-    measles = as.numeric(IR[which(IR$`Scientific name` == "measles Virus Infection"), -c(1:3)]),
+    measles = as.numeric(IR[which(IR$`Scientific name` == "Measles Virus Infection"), -c(1:3)]),
     pertussis = as.numeric(IR[which(IR$`Scientific name` == "Bordetella pertussis Infection"), -c(1:3)]),
-    meningitis = as.numeric(IR[which(IR$`Scientific name` == "Neisseria meningitidis Infection"), -c(1:3)]),
-    tuberculosis_p = as.numeric(IR[which(IR$`Scientific name` == "Mycobacterium tuberculosis Infection (Pulmonary)"), -c(1:3)]),
-    tuberculosis_ep = as.numeric(IR[which(IR$`Scientific name` == "Mycobacterium tuberculosis Infection (Extra-pulmonary)"), -c(1:3)])
+    `Hib disease` = as.numeric(IR[which(IR$`Scientific name` == "Haemophilus influenzae Meningitis"), -c(1:3)]), #Not infections?
+    `pneumococcal disease` = as.numeric(IR[which(IR$`Scientific name` == "Various bacteria can cause bacterial meningitis; Various types of bacteria, especially Streptococcus pneumonia"), -c(1:3)]) #Not infections?
 ) %>% 
     fill(year, .direction = "down")
 rm(locations, years)
@@ -62,13 +68,14 @@ IR <- IR %>%
     arrange(t)
 #set missing pertussis to 0 (maybe set to lebanon numbers)
 IR$pertussis[is.na(IR$pertussis)] <- 0
+IR$`Hib disease`[is.na(IR$`Hib disease`)] <- 0
 
-foi$measles <- IR$measles
-foi$pertussis <- IR$pertussis
-foi$Meningitis <- IR$meningitis
-foi$Tuberculosis <- IR$tuberculosis_p + IR$tuberculosis_ep
-tt_foi$measles <- tt_foi$pertussis <- tt_foi$Meningitis <- tt_foi$Tuberculosis <- IR$t
-rm(IR)
+diseases_with_data <- setdiff(vaccine_names, names(tt_foi))
+names(diseases_with_data) <- diseases_with_data
+
+tt_foi <- c(tt_foi, map(diseases_with_data, ~IR$t))
+foi <- c(foi, map(diseases_with_data, ~IR[[.x]]))
+rm(diseases_with_data, IR)
 
 map2_dfr(foi, tt_foi, .id = "Pathogen", function(par, tt) {
     tibble(
@@ -85,14 +92,27 @@ map2_dfr(foi, tt_foi, .id = "Pathogen", function(par, tt) {
     saveRDS("data/derived/foi.rds")
 
 #Vaccine efficacy data (for infection)
-vaccine_efficacy <- list(
-    diphtheria = list(central = 0.6, lower = 0.51, upper = 0.68),
-    measles = list(central = 0.85, lower = 0.25, upper = 0.97),
-    pertussis = list(central = 0.83, lower = 0.6, upper = 0.92),
-    Meningitis = list(central = NA, lower = NA, upper = NA), #No data?
-    polio - wildtype = list(central = 0.28, lower = 0.22, upper = 0.29),
-    Tuberculosis = list(central = NA, lower = NA, upper = NA) #No data?
-)
+vaccine_efficacy <- read_csv("data/raw/vaccine_parameters.csv", show_col_types = FALSE) %>%
+    filter(
+        `Outcome of vaccination (direct/individual protection only)` == "Vaccine effectiveness against infection (% of fully vaccinated people who are protected against acquiring infection)"
+    ) %>%
+    rowwise() %>%
+    transmute(
+        disease = c(
+            "Diphtheria (as part of pentavalent vaccine)" = "diptheria",
+            "Pertussis (as part of pentavalent vaccine)" = "pertussis",
+            "Measles (as part of MMR)" = "measles",
+            "Polio / IPV-OPV sequential" = "polio - wildtype",
+            "Polio / bOPV two-dose campaign" = "",
+            "Haemophilus influenzae type B (as part of pentavalent vaccine)" = "Hib disease", 
+            "Pneumococcus (conjugate vaccine)" = "pneumococcal disease",
+            "Rotavirus (1-valent)" = "rotavirus"
+        )[`Infectious disease / vaccine`],
+        vaccine_efficacy = list(list(central = `Central estimate`, lower = `Lower bound`, upper = `Upper bound`))
+    ) %>%
+    filter(disease %in% vaccine_names)
+vaccine_efficacy <- setNames(vaccine_efficacy$vaccine_efficacy, vaccine_efficacy$disease)
+
 vaccine_efficacy <- map(vaccine_efficacy, ~.x$central)
 
 #Vaccine coverage
@@ -100,17 +120,21 @@ schedule <- list(
     pentavalent = c(2/12, 4/12, 6/12, 6) * 365,
     BCG = c(1/12) * 365,
     MMR = c(1, 1.5) * 365,
-    `IPV-OPV` = c(1/12, 2/12, 4/12, 6/12, 18/12, 6) * 365
+    `IPV-OPV` = c(1/12, 2/12, 4/12, 6/12, 18/12, 6) * 365,
+    PCV = c(2/12, 4/12, 1) * 365,
+    ROTAVAC = c(2/12, 4/12, 6/12) * 365
 )
+
 #convert to age group indicators
 age_groups <- cumsum(c(age_group_sizes, 365*10))
 schedule <- map(schedule, ~unique(map_int(.x, function(x) min(which(x < age_groups)))))
 
-initial_vaccine_coverage <- list(
+initial_vaccine_coverage <- list( #from 2000
     pentavalent = c(0.958, 0.994),
-    BCG = c(0.995),
     MMR = c(0.986), #somewhere between meales and MMR
-    `IPV-OPV` = c(0.983, 0.997, 0.995) #based on OPV3
+    `IPV-OPV` = c(0.983, 0.997, 0.995), #based on OPV3
+    PCV = c(0, 0),
+    ROTAVAC = c(0)
 )
 
 #where we have just a single value we assume thats the coverage for both doses
@@ -119,7 +143,9 @@ vaccine_coverage <- tibble(
     pentavalent = c(0.925, 0.999, 0.973),
     BCG = c(0.997, 0.998, 1),
     MMR = c(0.959, 0.994, 0.965),
-    `IPV-OPV` = c(0.951, 0.998, 0.942)
+    `IPV-OPV` = c(0.951, 0.998, 0.942),
+    PCV = c(NA, NA, 0.951),
+    ROTAVAC = c(NA, NA, 0.916)
 ) %>%
     rbind(
         tibble(
@@ -127,27 +153,47 @@ vaccine_coverage <- tibble(
             pentavalent = c(98.1, 96.8, 98.4, 99.3, 98.2, 98.1, 98.8, 98.3)/100,
             BCG = c(98.7, 99.9, 99.0, 99.5, 98.8, 99.4, 99.8, 99)/100,
             MMR = c(94.3, 98.4, 98.3, 99.9, 98.9, 99.6, 99.0, 99.8)/100,
-            `IPV-OPV` = c(98.8, 98.3, 98.6, 99.8, 98.9, 98.3, 98.4, 98.3)/100
+            `IPV-OPV` = c(98.8, 98.3, 98.6, 99.8, 98.9, 98.3, 98.4, 98.3)/100,
+            PCV = NA,
+            ROTAVAC = NA
         )
     ) %>%
     group_by(year) %>%
-    summarise_all(mean) %>%
+    summarise_all(~mean(.x, na.rm = TRUE)) %>%
     arrange(year) %>%
     mutate(
         year = year - 1 #assume each one represents the coverage at the end of the year
     ) %>%
     complete(year = seq(year(date_start), max(year))) %>%
-    fill(everything(), .direction = "up") %>%
-    group_by(pentavalent, BCG, MMR, `IPV-OPV`) %>%
+    fill(everything(), .direction = "updown") %>%
+    group_by(across(c(-year))) %>%
     summarise(
         year = min(year),
         .groups = "drop"
     ) %>%
     arrange(year)
-tt_vaccine_coverage <- list()
-tt_vaccine_coverage$measles <- tt_vaccine_coverage$pertussis <-
-    tt_vaccine_coverage$Meningitis <- tt_vaccine_coverage$Tuberculosis <-
-        as.numeric(ymd(paste0(vaccine_coverage$year, "-01-01")) - date_start)
+
+#rota and PCV not introduced at the start
+vaccine_coverage$PCV[vaccine_coverage$year < 2012] <- 0
+vaccine_coverage$ROTAVAC[vaccine_coverage$year < 2016] <- 0
+
+vaccine_coverage %>%
+    mutate(Date = ymd(paste0(year, "-01-01"))) %>%
+    complete(Date = seq(date_start, date_projection_end, by = "day")) %>%
+    select(-year) %>% 
+    fill(-Date, .direction = "down") %>%
+    pivot_longer(
+        cols = -Date,
+        names_to = "Vaccine",
+        values_to = "Coverage"
+    ) %>%
+    mutate(
+        projection_period = Date >= date_projection_start
+    ) %>%
+    saveRDS("data/derived/foi.rds")
+
+tt_vaccine_coverage <- map(vaccine_names, ~as.numeric(ymd(paste0(vaccine_coverage$year, "-01-01")) - date_start))
+
 vaccine_coverage <- vaccine_coverage  %>%
     select(!year) %>% 
     as.list() %>%
@@ -157,38 +203,37 @@ vaccine_coverage <- vaccine_coverage  %>%
         coverage_matrix[,vaccine_schedule] <- coverage
         coverage_matrix
     })
+
 #convert to per disease
 disease_map <- list(
-    Dipetheria = "pentavalent",
-    pertussis = "pentavalent",
-    Tuberculosis = "BCG",
-    measles = "MMR",
-    polio - wildtype = "IPV-OPV"
+    diphtheria = "pentavalent", measles = "MMR", pertussis = "pentavalent",
+    `polio - wildtype` = `IPV-OPV`, `polio - vaccine-derived` = `IPV-OPV`,
+    `Hib disease` = "pentavalent", `pneumococcal disease` = "PCV",
+    rotavirus = "ROTAVAC"
 )
+
 vaccine_coverage <- map(disease_map, ~vaccine_coverage[[.x]])
 rm(disease_map, schedule, age_groups)
 
-map2_dfr(vaccine_coverage, tt_foi, .id = "Pathogen", function(par, tt) {
-    tibble(
-        Date = date_start + tt,
-        `Force of Infection` = par
-    )
-}) %>%
-    group_by(Pathogen) %>%
-    complete(Date = seq(date_start, date_projection_end, by = "day")) %>%
-    fill(`Force of Infection`, .direction = "down") %>%
-    mutate(
-        projection_period = Date >= date_projection_start
-    ) %>%
-    saveRDS("data/derived/foi.rds")
-
 #Duration of Immunity
-duration_of_immunity <- list(
-    diphtheria = list(central = 0.4, lower = 1.111, upper = 0.25),
-    measles = list(central = 0.009, lower = 0.016, upper = 0.005),
-    pertussis = list(central = 0.043, lower = 0.059, upper = 0.034),
-    Meningitis = list(central = NA, lower = NA, upper = NA), #No data?
-    polio - wildtype = list(central = 0.05, lower = 0.067, upper = 0.033),
-    Tuberculosis = list(central = NA, lower = NA, upper = NA) #No data?
-)
-duration_of_immunity <- map(duration_of_immunity, ~1/.x$central*365)
+duration_of_immunity <- read_csv("data/raw/vaccine_parameters.csv", show_col_types = FALSE) %>%
+    filter(
+        `Outcome of vaccination (direct/individual protection only)` == "Immunity waning rate per year (1 / mean duration of functional vaccine protection against infection and/or disease)"
+    ) %>%
+    rowwise() %>%
+    transmute(
+        disease = c(
+            "Diphtheria (as part of pentavalent vaccine)" = "diptheria",
+            "Pertussis (as part of pentavalent vaccine)" = "pertussis",
+            "Measles (as part of MMR)" = "measles",
+            "Polio / IPV-OPV sequential" = "polio - wildtype",
+            "Polio / bOPV two-dose campaign" = "",
+            "Haemophilus influenzae type B (as part of pentavalent vaccine)" = "Hib disease", 
+            "Pneumococcus (conjugate vaccine)" = "pneumococcal disease",
+            "Rotavirus (1-valent)" = "rotavirus"
+        )[`Infectious disease / vaccine`],
+        duration_of_immunity = list(list(central = `Central estimate`, lower = `Lower bound`, upper = `Upper bound`))
+    ) %>%
+    filter(disease %in% vaccine_names)
+duration_of_immunity <- setNames(duration_of_immunity$duration_of_immunity, duration_of_immunity$disease)
+duration_of_immunity <- map(duration_of_immunity, ~(1/.x$central) * 365)
