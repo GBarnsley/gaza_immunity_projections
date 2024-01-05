@@ -192,7 +192,7 @@ vaccine_coverage %>%
     ) %>%
     saveRDS("data/derived/foi.rds")
 
-tt_vaccine_coverage <- map(vaccine_names, ~as.numeric(ymd(paste0(vaccine_coverage$year, "-01-01")) - date_start))
+tt_vaccinations <- map(vaccine_names, ~as.numeric(ymd(paste0(vaccine_coverage$year, "-01-01")) - date_start))
 
 vaccine_coverage <- vaccine_coverage  %>%
     select(!year) %>% 
@@ -207,13 +207,23 @@ vaccine_coverage <- vaccine_coverage  %>%
 #convert to per disease
 disease_map <- list(
     diphtheria = "pentavalent", measles = "MMR", pertussis = "pentavalent",
-    `polio - wildtype` = `IPV-OPV`, `polio - vaccine-derived` = `IPV-OPV`,
+    `polio - wildtype` = "IPV-OPV", `polio - vaccine-derived` = "IPV-OPV",
     `Hib disease` = "pentavalent", `pneumococcal disease` = "PCV",
     rotavirus = "ROTAVAC"
 )
 
 vaccine_coverage <- map(disease_map, ~vaccine_coverage[[.x]])
-rm(disease_map, schedule, age_groups)
+#convert to a rate (using the fact that this is yearly) this only works if the vaccinated age groups are one year or less
+vaccinations <- map(
+    vaccine_coverage,
+    ~sweep(
+        -log(1 - .x),
+        2,
+        c(age_group_sizes, 1),
+        FUN = "/"
+    )
+)
+rm(disease_map, schedule, age_groups, vaccine_coverage)
 
 #Duration of Immunity
 duration_of_immunity <- read_csv("data/raw/vaccine_parameters.csv", show_col_types = FALSE) %>%

@@ -1,18 +1,36 @@
 #define age groups
+#age_group_sizes <- c(
+#    1/12, #0-1 month
+#    11/12, #1-12 months
+#    4, #1-5 years
+#    10, #5-15 years
+#    15, #15-30 years
+#    15, #30-45 years
+#    5, #45-50 years
+#    5, #50-55 years
+#    5, #55-60 years
+#    5, #60-65 years
+#    5, #65-70 years
+#    5 #70-75 years
+#    #75 + don't define a size
+#) * 365 #in days
+
 age_group_sizes <- c(
     1/12, #0-1 month
-    11/12, #1-12 months
-    4, #1-5 years
-    10, #5-15 years
-    15, #15-30 years
-    15, #30-45 years
-    5, #45-50 years
-    5, #50-55 years
-    5, #55-60 years
-    5, #60-65 years
-    5, #65-70 years
-    5 #70-75 years
-    #75 + don't define a size
+    11/12, #1-12 months #we need vaccination years to be yearly
+    1, #1-2 years
+    1, #2-3 years
+    1, #3-4 years
+    1, #4-5 years
+    1, #5-6 years
+    4, #6-10 years
+    5, #10-15 years
+    5, #15-20 years
+    10, #20-30 years
+    10, #30-40 years
+    10, #40-50 years
+    10 #50-60 years
+    #60+ don't define a size
 ) * 365 #in days
 
 #now demographic data
@@ -102,20 +120,21 @@ death_rate_age <- death_rate_age %>%
 death_rate_age$group <- map2_int(
     death_rate_age$age_group_start, death_rate_age$age_group_end, function(start, end) {
         if(is.na(end)) return(NA)
+        if(sum(model_age_group_start >= end) == 0) return(NA)
         which(
             model_age_group_start <= start & model_age_group_end >= end
         )
     })
-death_rate_age$age_group_end[is.na(death_rate_age$group)] <- death_rate_age$age_group_start[is.na(death_rate_age$group)] + 20
+death_rate_age$age_group_end[is.na(death_rate_age$age_group_end)] <- death_rate_age$age_group_start[is.na(death_rate_age$age_group_end)] + (10*365)
 death_rate_age$group[is.na(death_rate_age$group)] <- max(death_rate_age$group, na.rm = TRUE) + 1
 
 #now recombine weighting based on width of age groups
 death_rate_age <- death_rate_age %>%
     group_by(group) %>%
     summarise(
+        death_rate = sum(death_rate * (age_group_end - age_group_start), na.rm = TRUE) / sum(age_group_end - age_group_start, na.rm = TRUE),
         age_group_start = min(age_group_start, na.rm = TRUE),
         age_group_end = max(age_group_end, na.rm = TRUE),
-        death_rate = sum(death_rate * (age_group_end - age_group_start), na.rm = TRUE) / sum(age_group_end - age_group_start, na.rm = TRUE),
         .groups = "drop"
     ) %>%
     select(-group)
