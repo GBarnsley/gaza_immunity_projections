@@ -144,14 +144,12 @@ additional_parameters <- list(prop_death = death_rate_age$death_rate/sum(death_r
 tibble(
     age_group_start = cumsum(c(0, age_group_sizes))/365,
     age_group_end = c(cumsum(age_group_sizes)/365, 100),
-    proportional_death_rate = additional_parameters$prob_death
+    proportional_death_rate = additional_parameters$prop_death
 ) %>%
     saveRDS("data/derived/age_proportional_death_rate.rds")
 
 rm(death_rate_age, model_age_group_start, model_age_group_end, missing_starts)
 
-#for now we just use this as scaling assuming underlying population distribution remains unchanged, come back to this
-#also need an underlying age distribution, wait until we have this
 death_rates <- read_csv("data/raw/crude_death_rate.csv", show_col_types = FALSE) %>% #WB
     arrange(Year)
 tt_death_rates <- as.numeric(ymd(paste0(death_rates$Year, "-01-01")) - date_start)

@@ -190,7 +190,7 @@ vaccine_coverage %>%
     mutate(
         projection_period = Date >= date_projection_start
     ) %>%
-    saveRDS("data/derived/foi.rds")
+    saveRDS("data/derived/vaccine_coverage.rds")
 
 tt_vaccinations <- map(vaccine_names, ~as.numeric(ymd(paste0(vaccine_coverage$year, "-01-01")) - date_start))
 
