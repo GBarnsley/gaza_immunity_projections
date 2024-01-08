@@ -1,0 +1,4 @@
+source("analysis/0_setup.R")
+source("analysis/1_demographics.R")
+source("analysis/2_diseases.R")
+source("analysis/3_projections.R")

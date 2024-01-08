@@ -99,11 +99,11 @@ vaccine_efficacy <- read_csv("data/raw/vaccine_parameters.csv", show_col_types =
     rowwise() %>%
     transmute(
         disease = c(
-            "Diphtheria (as part of pentavalent vaccine)" = "diptheria",
+            "Diphtheria (as part of pentavalent vaccine)" = "diphtheria",
             "Pertussis (as part of pentavalent vaccine)" = "pertussis",
             "Measles (as part of MMR)" = "measles",
-            "Polio / IPV-OPV sequential" = "polio - wildtype",
-            "Polio / bOPV two-dose campaign" = "",
+            "Polio wild-type 1 or 3 / IPV-OPV sequential" = "polio - wildtype",
+            "Polio vaccine-derived cVPD2 / IPV-OPV sequential" = "polio - vaccine-derived",
             "Haemophilus influenzae type B (as part of pentavalent vaccine)" = "Hib disease", 
             "Pneumococcus (conjugate vaccine)" = "pneumococcal disease",
             "Rotavirus (1-valent)" = "rotavirus"
@@ -233,11 +233,11 @@ duration_of_immunity <- read_csv("data/raw/vaccine_parameters.csv", show_col_typ
     rowwise() %>%
     transmute(
         disease = c(
-            "Diphtheria (as part of pentavalent vaccine)" = "diptheria",
+            "Diphtheria (as part of pentavalent vaccine)" = "diphtheria",
             "Pertussis (as part of pentavalent vaccine)" = "pertussis",
             "Measles (as part of MMR)" = "measles",
-            "Polio / IPV-OPV sequential" = "polio - wildtype",
-            "Polio / bOPV two-dose campaign" = "",
+            "Polio wild-type 1 or 3 / IPV-OPV sequential" = "polio - wildtype",
+            "Polio vaccine-derived cVPD2 / IPV-OPV sequential" = "polio - vaccine-derived",
             "Haemophilus influenzae type B (as part of pentavalent vaccine)" = "Hib disease", 
             "Pneumococcus (conjugate vaccine)" = "pneumococcal disease",
             "Rotavirus (1-valent)" = "rotavirus"
@@ -247,3 +247,14 @@ duration_of_immunity <- read_csv("data/raw/vaccine_parameters.csv", show_col_typ
     filter(disease %in% vaccine_names)
 duration_of_immunity <- setNames(duration_of_immunity$duration_of_immunity, duration_of_immunity$disease)
 duration_of_immunity <- map(duration_of_immunity, ~(1/.x$central) * 365)
+
+#initial states
+#no vaccinated, shouldn't matter that much (explore)
+
+#if a disease has infections at the start then we assume some maternal and acquired immunity
+cases <- map_lgl(foi, ~.x[1] > 0)
+p_R <- rep(0.1, length(total_pop))
+p_M <- c(rep(0.1, 2), rep(0, length(total_pop) - 2))
+S_0 <- map(cases, ~if_else(rep(.x, length(total_pop)), (1 - p_M - p_R) * total_pop, 1 * total_pop))
+R_0 <- map(cases, ~if_else(rep(.x, length(total_pop)), p_R * total_pop, 0))
+M_0 <- map(cases, ~if_else(rep(.x, length(total_pop)), p_M * total_pop, 0)[1:2])
