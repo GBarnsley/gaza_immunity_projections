@@ -1,24 +1,10 @@
-#define age groups
-#age_group_sizes <- c(
-#    1/12, #0-1 month
-#    11/12, #1-12 months
-#    4, #1-5 years
-#    10, #5-15 years
-#    15, #15-30 years
-#    15, #30-45 years
-#    5, #45-50 years
-#    5, #50-55 years
-#    5, #55-60 years
-#    5, #60-65 years
-#    5, #65-70 years
-#    5 #70-75 years
-#    #75 + don't define a size
-#) * 365 #in days
 
 age_group_sizes <- c(
     1/12, #0-1 month
-    11/12, #1-12 months #we need vaccination years to be yearly
-    1, #1-2 years
+    3/12, #1-4 months
+    8/12, #4-12 months
+    6/12, #12-18 months
+    6/12, #18-24 months
     1, #2-3 years
     1, #3-4 years
     1, #4-5 years
@@ -169,12 +155,14 @@ tibble(
     saveRDS("data/derived/crude_death_rates.rds")
 
 #duration of maternal immunity
-duration_of_maternal_immunity <- (6/12) * 365 - age_group_sizes[1] #6 months, adjusted for only occuring in the 2nd compartment
+duration_of_maternal_immunity <- (6/12) * 365 #6 months, will be convert into a number of compartments in the model
+#4 to be more compatible
+duration_of_maternal_immunity <- (4/12) * 365
 
 #Calculate total population in each age group (currently take Palestine breakdown from WPP and split by proportion of population in each area)
-age_vars <- c("0-4", "5-9", "10-14", 
-"15-19", "20-24", "25-29", "30-34", "35-39", "40-44", "45-49", 
-"50-54", "55-59", "60-64", "65-69", "70-74", "75-79", "80-84", 
+age_vars <- c("0-4", "5-9", "10-14",
+"15-19", "20-24", "25-29", "30-34", "35-39", "40-44", "45-49",
+"50-54", "55-59", "60-64", "65-69", "70-74", "75-79", "80-84",
 "85-89", "90-94", "95-99", "100+")
 total_population <- read_csv("data/raw/wpp.csv", skip = 16) %>%
     filter(Year == 2000 & `Region, subregion, country or area *` == "State of Palestine" ) %>%

@@ -115,23 +115,60 @@ vaccine_efficacy <- setNames(vaccine_efficacy$vaccine_efficacy, vaccine_efficacy
 
 vaccine_efficacy <- map(vaccine_efficacy, ~.x$central)
 
+
+#Vaccine efficacy data (for disease)
+vaccine_efficacy_disease <- read_csv("data/raw/vaccine_parameters.csv", show_col_types = FALSE) %>%
+    filter(
+        `Outcome of vaccination (direct/individual protection only)` %in% c(
+            "Vaccine effectiveness against severe disease (% of fully vaccinated people who are protected against acquiring severe disease)",
+            #"Vaccine effectiveness against pneumonia (% of fully vaccinated people who are protected against acquiring severe disease)",
+            "Vaccine effectiveness against meningitis or other invasive disease (% of fully vaccinated people who are protected against acquiring severe disease)"
+        )
+    ) %>%
+    rowwise() %>%
+    transmute(
+        disease = c(
+            "Diphtheria (as part of pentavalent vaccine)" = "diphtheria",
+            "Pertussis (as part of pentavalent vaccine)" = "pertussis",
+            "Measles (as part of MMR)" = "measles",
+            "Polio wild-type 1 or 3 / IPV-OPV sequential" = "polio - wildtype",
+            "Polio vaccine-derived cVPD2 / IPV-OPV sequential" = "polio - vaccine-derived",
+            "Haemophilus influenzae type B (as part of pentavalent vaccine)" = "Hib disease", 
+            "Pneumococcus (conjugate vaccine)" = "pneumococcal disease",
+            "Rotavirus (1-valent)" = "rotavirus"
+        )[`Infectious disease / vaccine`],
+        vaccine_efficacy = list(list(central = `Central estimate`, lower = `Lower bound`, upper = `Upper bound`))
+    ) %>%
+    filter(disease %in% vaccine_names)
+vaccine_efficacy_disease <- setNames(vaccine_efficacy_disease$vaccine_efficacy, vaccine_efficacy_disease$disease)
+
+vaccine_efficacy_disease <- map(vaccine_efficacy_disease, ~.x$central)
+
+#fix polio-wildtype
+vaccine_efficacy_disease$`polio - wildtype` <- max(vaccine_efficacy$`polio - wildtype`, vaccine_efficacy_disease$`polio - wildtype`)
+
 #Vaccine coverage
 schedule <- list(
-    pentavalent = c(2/12, 4/12, 6/12, 6) * 365,
-    BCG = c(1/12) * 365,
-    MMR = c(1, 1.5) * 365,
-    `IPV-OPV` = c(1/12, 2/12, 4/12, 6/12, 18/12, 6) * 365,
-    PCV = c(2/12, 4/12, 1) * 365,
-    ROTAVAC = c(2/12, 4/12, 6/12) * 365
+    pentavalent = c(2/12, 4/12, 6/12, 6),
+    BCG = c(1/12),
+    MMR = c(1, 1.5),
+    `IPV-OPV` = c(1/12, 2/12, 4/12, 6/12, 18/12, 6),
+    PCV = c(2/12, 4/12, 1),
+    ROTAVAC = c(2/12, 4/12, 6/12)
 )
-
+#simplify this so that first 6 months doses happen at 4 months, 1 year at 1 year, 1.5 years at 1.5 years
+schedule <- map(schedule, ~unique(case_when(
+    .x %in% c(2/12, 4/12, 6/12) ~ 4/12,
+    .x == 1/12 ~ 0,
+    TRUE ~ .x
+)) * 365)
 #convert to age group indicators
-age_groups <- cumsum(c(age_group_sizes, 365*10))
-schedule <- map(schedule, ~unique(map_int(.x, function(x) min(which(x < age_groups)))))
+age_groups <- c(0, cumsum(age_group_sizes))
+schedule <- map(schedule, ~unique(map_int(.x, function(x) min(which(x < age_groups)) - 1))) #shift back by one since vaccinations happens upon entering an age group
 
 initial_vaccine_coverage <- list( #from 2000
     pentavalent = c(0.958, 0.994),
-    MMR = c(0.986), #somewhere between meales and MMR
+    MMR = c(0.986), #somewhere between measles and MMR
     `IPV-OPV` = c(0.983, 0.997, 0.995), #based on OPV3
     PCV = c(0, 0),
     ROTAVAC = c(0)
@@ -254,7 +291,8 @@ duration_of_immunity <- map(duration_of_immunity, ~(1/.x$central) * 365)
 #if a disease has infections at the start then we assume some maternal and acquired immunity
 cases <- map_lgl(foi, ~.x[1] > 0)
 p_R <- rep(0.1, length(total_pop))
-p_M <- c(rep(0.1, 2), rep(0, length(total_pop) - 2))
+p_M <- rep(0, length(total_pop)) #can't assume any atm
 S_0 <- map(cases, ~if_else(rep(.x, length(total_pop)), (1 - p_M - p_R) * total_pop, 1 * total_pop))
 R_0 <- map(cases, ~if_else(rep(.x, length(total_pop)), p_R * total_pop, 0))
 M_0 <- map(cases, ~if_else(rep(.x, length(total_pop)), p_M * total_pop, 0)[1:2])
+M_0 <- map(cases, ~NULL) #can't assume any atm

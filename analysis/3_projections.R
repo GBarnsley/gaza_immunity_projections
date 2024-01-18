@@ -21,6 +21,7 @@ res <- project_point_estimate(
     force_of_infection = foi,
     tt_force_of_infection = tt_foi,
     vaccine_efficacy = vaccine_efficacy,
+    vaccine_efficacy_disease = vaccine_efficacy_disease,
     vaccinations = vaccinations,
     tt_vaccinations = tt_vaccinations,
     duration_of_immunity = duration_of_immunity,
@@ -62,6 +63,7 @@ projections <- res$projections %>%
     summarise(
         population = sum(Population),
         immune = sum(Immune),
+        immune_disease = sum(`Immune(Disease)`),
         .groups = "drop"
     ) %>%
     arrange(date, age_group, vaccine_type)
