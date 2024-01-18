@@ -4,9 +4,8 @@ type <- "deterministic_gz"
 t_projection_starts <- as.numeric(date_projection_start - date_start)
 t_projection_ends <- as.numeric(date_projection_end - date_start)
 
-#initial state of the model
-
-res <- project_point_estimate(
+#collect parameters
+baseline_parameters <- list(
     type = type,
     t_projection_starts = t_projection_starts,
     t_projection_ends = t_projection_ends,
@@ -30,6 +29,55 @@ res <- project_point_estimate(
     M_0 = M_0
 )
 
+source("analysis/scenario_funcs.R")
+
+vaccine_formulations <- unique(disease_map)
+names(vaccine_formulations) <- vaccine_formulations
+
+date_vaccine_coverage <- map(vaccine_formulations, ~c(date_projection_start, date_projection_start + 90))
+
+vaccine_coverage_pessimistic <- map(vaccine_formulations, ~c(0.05, 0.05))
+vaccine_coverage_central <- map(vaccine_formulations, ~c(0.1, 0.2))
+vaccine_coverage_pessimistic <- map(vaccine_formulations, ~c(0.35, 0.55))
+
+#convert to per disease
+date_vaccine_coverage <- map(disease_map, ~date_vaccine_coverage[[.x]])
+vaccine_coverage_pessimistic <- map(disease_map, ~vaccine_coverage_central[[.x]])
+vaccine_coverage_central <- map(disease_map, ~vaccine_coverage_central[[.x]])
+vaccine_coverage_optimistic <- map(disease_map, ~vaccine_coverage_optimistic[[.x]])
+
+pessimistic_parameters <- apply_scenario(
+    baseline_parameters = baseline_parameters,
+    vaccine_coverage = vaccine_coverage_pessimistic,
+    date_vaccine_coverage = date_vaccine_coverage,
+    date_start = date_start,
+    date_projection_start = date_projection_start
+)
+
+central_parameters <- apply_scenario(
+    baseline_parameters = baseline_parameters,
+    vaccine_coverage = vaccine_coverage_central,
+    date_vaccine_coverage = date_vaccine_coverage,
+    date_start = date_start,
+    date_projection_start = date_projection_start
+)
+
+optimistic_parameters <- apply_scenario(
+    baseline_parameters = baseline_parameters,
+    vaccine_coverage = vaccine_coverage_optimistic,
+    date_vaccine_coverage = date_vaccine_coverage,
+    date_start = date_start,
+    date_projection_start = date_projection_start
+)
+
+res <- list(
+    pessimistic = do.call(project_point_estimate, pessimistic_parameters),
+    central = do.call(project_point_estimate, central_parameters),
+    optimistic = do.call(project_point_estimate, optimistic_parameters)
+) %>%
+    transpose() %>%
+    map(~map_dfr(.x, function(x) x, .id = "scenario"))
+
 #reformat age groups
 output_age_group_names <- c(
     "0mo", "1to11mo", "12to59mo", "5to9yo", "10to14yo", "15to19yo", "20to29yo", "30to39yo", "40to49yo", "50to59yo", "60to100yo"
@@ -46,12 +94,12 @@ res$demographics %>%
         age_group = factor(output_age_group_names[index[age_group]], levels = output_age_group_names, ordered = TRUE),
         date = date_start + t
     ) %>%
-    group_by(age_group, date) %>%
+    group_by(scenario, age_group, date) %>%
     summarise(
         population = sum(value),
         .groups = "drop"
     ) %>%
-    arrange(date, age_group) %>%
+    arrange(date, age_group, scenario) %>%
     saveRDS("data/derived/demographics.rds")
 
 projections <- res$projections %>%
@@ -59,13 +107,13 @@ projections <- res$projections %>%
         age_group = factor(output_age_group_names[index[age_group]], levels = output_age_group_names, ordered = TRUE),
         date = date_start + t
     ) %>%
-    group_by(age_group, vaccine_type, date) %>%
+    group_by(scenario, age_group, vaccine_type, date) %>%
     summarise(
         population = sum(Population),
         immune = sum(Immune),
         immune_disease = sum(`Immune(Disease)`),
         .groups = "drop"
     ) %>%
-    arrange(date, age_group, vaccine_type)
+    arrange(date, age_group, vaccine_type, scenario)
 
 saveRDS(projections, "data/derived/projections.rds")

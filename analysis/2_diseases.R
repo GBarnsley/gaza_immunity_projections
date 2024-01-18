@@ -3,6 +3,14 @@ vaccine_names <- c(
     "diphtheria", "measles", "pertussis", "polio - wildtype",
     "polio - vaccine-derived", "Hib disease", "pneumococcal disease", "rotavirus"
 )
+
+disease_map <- list(
+    diphtheria = "pentavalent", measles = "MMR", pertussis = "pentavalent",
+    `polio - wildtype` = "IPV-OPV", `polio - vaccine-derived` = "IPV-OPV",
+    `Hib disease` = "pentavalent", `pneumococcal disease` = "PCV",
+    rotavirus = "ROTAVAC"
+)
+
 names(vaccine_names) <- vaccine_names
 
 #Force of Infection data
@@ -242,25 +250,8 @@ vaccine_coverage <- vaccine_coverage  %>%
     })
 
 #convert to per disease
-disease_map <- list(
-    diphtheria = "pentavalent", measles = "MMR", pertussis = "pentavalent",
-    `polio - wildtype` = "IPV-OPV", `polio - vaccine-derived` = "IPV-OPV",
-    `Hib disease` = "pentavalent", `pneumococcal disease` = "PCV",
-    rotavirus = "ROTAVAC"
-)
-
-vaccine_coverage <- map(disease_map, ~vaccine_coverage[[.x]])
-#convert to a rate (using the fact that this is yearly) this only works if the vaccinated age groups are one year or less
-vaccinations <- map(
-    vaccine_coverage,
-    ~sweep(
-        -log(1 - .x),
-        2,
-        c(age_group_sizes, 1),
-        FUN = "/"
-    )
-)
-rm(disease_map, schedule, age_groups, vaccine_coverage)
+vaccinations <- map(disease_map, ~vaccine_coverage[[.x]])
+rm(schedule, age_groups, vaccine_coverage)
 
 #Duration of Immunity
 duration_of_immunity <- read_csv("data/raw/vaccine_parameters.csv", show_col_types = FALSE) %>%

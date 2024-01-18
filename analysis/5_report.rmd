@@ -1,5 +1,5 @@
 # Gaza Vaccine Preventable Disease Immunity Modelling
-```{r setup, include=FALSE}
+```{r setup, echo=FALSE}
 true_wd <- getwd()
 split_wd <- str_split(true_wd, "/")[[1]]
 if(tail(split_wd, 1) == "analysis") {
@@ -18,18 +18,19 @@ read_csv_2 <- function(file, ...) {
 ```
 This report summarises modelling to track the amount of immunity to various vaccine-preventabel diseases in Gaza over the course of the conflict.
 The diseases currently modelled are:
+
 - MMR:
-- - Measles
-- Pentavalent
-- - Diphtheria
-- - Pertussis
-- - Hib Disease
+    - Measles
+- Pentavalent:
+    - Diphtheria
+    - Pertussis
+    - Hib Disease
 - Rotavirus
-- PCV
-- - Pneumococcal Disease
-- Polio
-- - Polio (Wild-type)
-- - Polio (Vaccine-derived)
+- PCV:
+    - Pneumococcal Disease
+- Polio:
+    - Polio (Wild-type)
+    - Polio (Vaccine-derived)
 
 ## Model Details
 
@@ -42,8 +43,8 @@ The model also simulates aquired immunity from pre-defined force of infection (F
 
 - Death rates within each age group are constant across vaccination and disease status. The relative rate of death in each age group is assumed to be follow the distribution reported from 2019-2022.
 - Crude birth rates are used so the birth are relative to the whole population, proportion of those born with maternal immunity is based on the proportions immune in the population between 15-45.
-- Vaccine coverages are intepreted as a risk of being vaccinated within the relevant age group, and translated into instantaneous rates of vaccination. (add equation)
-- Disease incidence rates are reweighted to account for population immunity (i.e. risk in S is greater than the crude rate), give equation!
+- Vaccine coverages are modelled as the proportion of people ageing into the relevant age group, will revisit this when modelling vaccinations in crisis
+- Disease incidence rates are reweighted to account for population immunity (i.e. risk in S is greater than the crude rate but capped at 1), give equation!
 - To translate rates across age groups it is assumed that the rates are uniform within age groups, and to translate populations it is assumed the age distribution within each age group is flat.
 - The model assumes that the population is closed and that there is no migration in or out of the population.
 - The model assumes that the population is well-mixed and that there is no spatial structure to the population.
@@ -60,7 +61,7 @@ Current issues:
 ## Data
 
 ### Birth Rate
-```{r crude_birth_rate}
+```{r crude_birth_rate, echo=FALSE, out.width="100%"}
 df <- readRDS_2("data/derived/crude_birth_rate.rds") %>%
     mutate(
         `Crude Birth Rate` = `Crude Birth Rate`*1000*365
@@ -75,10 +76,11 @@ df %>%
     labs(x = "Date", y = "Yearly Crude Birth Rate\n(per 1000)")
 
 ```
+
 The crude birth rate is taken from the CIA factbook, assumed to be constant with a year.
 
 ### Death Rate
-```{r crude_death_rate}
+```{r crude_death_rate, echo=FALSE, out.width="100%"}
 df <- readRDS_2("data/derived/crude_death_rates.rds") %>%
     mutate(
         `Crude Death Rate` = `Crude Death Rate`*1000*365
@@ -92,9 +94,10 @@ df %>%
     geom_vline(xintercept = date_projection_start, linetype = "dashed") +
     labs(x = "Date", y = "Yearly Crude Death Rate\n(per 1000)")
 ```
+
 The crude death rate is taken from the World Bank, assumed to be constant with a year.
 
-```{r death_rate_age}
+```{r death_rate_age, echo=FALSE, out.width="100%"}
 df <- readRDS_2("data/derived/age_proportional_death_rate.rds")
 df %>%
     ggplot(aes(x = age_group_start, xend = age_group_end, y = proportional_death_rate, yend = proportional_death_rate)) +
@@ -102,12 +105,13 @@ df %>%
     ggpubr::theme_pubclean() +
     labs(x = "Age", y = "Proportional risk of death compared to the other age groups")
 ```
+
 As it is unreasonable to assume that e crude death rate applies flatly across all age groups, the inidividual instantaneous death rate $D_{t, a}$ is calculated by:
 $$D_{t, a} = D_{t} \times \frac{P_{a} \cross N_{t, a}}{\sum_{a} P_{a} \cross N_{t, a}}$$
 where $D_{t}$ is the crude death rate at time $t$, $P_{a}$ is the proportional rate of death in age group $a$ as shown above, and $N_{t, a}$ is the number of people in age group $a$ at time $t$.
 
 ### Force of Infection
-```{r foi}
+```{r foi, echo=FALSE, out.width="100%"}
 df <- readRDS_2("data/derived/foi.rds") %>%
     mutate(
         `Force of Infection` = `Force of Infection`*1000*365
@@ -128,7 +132,7 @@ Force of infection is taken from the yearly incidence rates from MoH Gaza, these
 $$\lambda_{S, t} = \lambda{t} \cross \frac{N_t}{S_t}.$$
 
 ### Vaccination Coverage
-```{r vaccination_coverage}
+```{r vaccination_coverage, echo=FALSE, out.width="100%"}
 df <- readRDS_2("data/derived/vaccine_coverage.rds")
 df %>%
     ggplot(aes(x = Date, y = Coverage, colour = Vaccine)) +
@@ -156,34 +160,33 @@ none atm
 
 ### Checking Demographics data
 
-```{r total_age}
+```{r total_age, echo=FALSE, out.width="100%"}
 df <- readRDS_2("data/derived/demographics.rds")
 #total population comparison to MoH and PCBS
 read_csv_2("data/raw/total_pop_over_time.csv", skip = 1) %>%
     filter(Year == "Gaza Strip") %>%
     select(-Year) %>%
     pivot_longer(cols = everything(), names_to = "Year", values_to = "Population") %>%
-    mutate(source = "MoH") %>%
+    mutate(scenario = "MoH") %>%
     rbind(
         read_csv_2("data/raw/total_pop_over_time_PCBS.csv", skip = 3) %>%
             filter(Governorate == "Gaza Strip") %>%
             select(-Governorate) %>%
             pivot_longer(cols = everything(), names_to = "Year", values_to = "Population") %>%
-            mutate(source = "PCBS")
+            mutate(scenario = "PCBS")
     ) %>%
     mutate(Year = as.integer(Year)) %>%
     rbind(
         df %>%
-            group_by(date) %>%
+            group_by(scenario, date) %>%
             summarise(Population = sum(population)) %>%
             mutate(Year = year(date)) %>%
-            group_by(Year) %>%
-            summarise(Population = mean(Population)) %>%
-            mutate(source = "Model")
+            group_by(scenario, Year) %>%
+            summarise(Population = mean(Population))
     ) %>%
     mutate(Year = ymd(paste0(Year, "-06-01"))) %>%
-    ggplot(aes(x = Year, y = Population, colour = source)) +
-        geom_line(linewidth = 1, alpha = 0.9) +
+    ggplot(aes(x = Year, y = Population, colour = scenario)) +
+        geom_line(linewidth = 1) +
         ggpubr::theme_pubclean() +
         geom_vline(xintercept = date_projection_start, linetype = "dashed") +
         scale_x_date(date_breaks = "1 year", date_labels = "%Y") +
@@ -191,7 +194,7 @@ read_csv_2("data/raw/total_pop_over_time.csv", skip = 1) %>%
         labs(x = "Date", y = "Population", colour = "Source:", title = "Population over the years")
 ```
 
-```{r 2023_ages}
+```{r 2023_ages, echo=FALSE, out.width="100%"}
 #age break down 2023
 read_csv_2("data/raw/pop_2023_UNFPA.csv", skip = 2) %>%
     transmute(
@@ -219,7 +222,7 @@ read_csv_2("data/raw/pop_2023_UNFPA.csv", skip = 2) %>%
     mutate(source = "UNFPA") %>%
     rbind(
         df %>%
-            filter(date >= ymd("2023-01-01")) %>%
+            filter(date >= ymd("2023-01-01") & scenario == "central") %>%
             group_by(age_group) %>%
             summarise(population = mean(population), .groups = "drop") %>%
             mutate(
@@ -240,9 +243,9 @@ read_csv_2("data/raw/pop_2023_UNFPA.csv", skip = 2) %>%
 
 ### Immunity projections
 
-```{r immunity}
+```{r immunity, echo=FALSE, out.width="100%"}
 df <- readRDS_2("data/derived/projections.rds") %>%
-    group_by(date, vaccine_type) %>%
+    group_by(date, vaccine_type, scenario) %>%
     summarise(
         immunity = sum(immune)/sum(population),
         .groups = "drop"
@@ -255,5 +258,6 @@ df %>%
     scale_x_date(date_breaks = "months", date_labels = "%b %Y") +
     scale_y_continuous(labels = scales::percent) +
     coord_cartesian(ylim = c(0, max(df$immunity))) +
-    labs(x = "Date", y = "Proportion of Population Immune (%)", colour = "Disease:")
+    labs(x = "Date", y = "Proportion of Population Immune (%)", colour = "Disease:") +
+    facet_wrap(~scenario, ncol = 1)
 ```
