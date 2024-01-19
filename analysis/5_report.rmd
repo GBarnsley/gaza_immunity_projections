@@ -13,7 +13,7 @@ readRDS_2 <- function(file) {
     readRDS(file.path(true_wd, file))
 }
 read_csv_2 <- function(file, ...) {
-    read_csv(file.path(true_wd, file), ...)
+    read_csv(file.path(true_wd, file), show_col_types = FALSE, ...)
 }
 ```
 This report summarises modelling to track the amount of immunity to various vaccine-preventabel diseases in Gaza over the course of the conflict.
@@ -51,8 +51,8 @@ The model also simulates aquired immunity from pre-defined force of infection (F
 - VE is assumed to be the same across all doses, could apply some scaling.
 - We model no vaccine coverage at the start of the model.
 
-
 Current issues:
+
 - This model is inappropriate for modelling Pneumococcal Disease 
 - HiB Disease data is only Meningitis, and Pneumococcal Disease data is just any bacterial Meningitis
 - No Pertussis data, though there is transmission in Lebanon
@@ -107,7 +107,7 @@ df %>%
 ```
 
 As it is unreasonable to assume that e crude death rate applies flatly across all age groups, the inidividual instantaneous death rate $D_{t, a}$ is calculated by:
-$$D_{t, a} = D_{t} \times \frac{P_{a} \cross N_{t, a}}{\sum_{a} P_{a} \cross N_{t, a}}$$
+$$D_{t, a} = D_{t} \times \frac{P_{a} \times N_{t, a}}{\sum_{a} P_{a} \times N_{t, a}}$$
 where $D_{t}$ is the crude death rate at time $t$, $P_{a}$ is the proportional rate of death in age group $a$ as shown above, and $N_{t, a}$ is the number of people in age group $a$ at time $t$.
 
 ### Force of Infection
@@ -129,7 +129,7 @@ df %>%
 ```
 
 Force of infection is taken from the yearly incidence rates from MoH Gaza, these are scaled to the force of infection on susceptible individual through the equation:
-$$\lambda_{S, t} = \lambda{t} \cross \frac{N_t}{S_t}.$$
+$$\lambda_{S, t} = min\left(\lambda{t} \times \frac{N_t}{S_t}, 1\right).$$
 
 ### Vaccination Coverage
 ```{r vaccination_coverage, echo=FALSE, out.width="100%"}
@@ -259,5 +259,5 @@ df %>%
     scale_y_continuous(labels = scales::percent) +
     coord_cartesian(ylim = c(0, max(df$immunity))) +
     labs(x = "Date", y = "Proportion of Population Immune (%)", colour = "Disease:") +
-    facet_wrap(~scenario, ncol = 1)
+    facet_wrap(~scenario, nrow = 1)
 ```

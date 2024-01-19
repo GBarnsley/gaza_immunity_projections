@@ -38,11 +38,11 @@ date_vaccine_coverage <- map(vaccine_formulations, ~c(date_projection_start, dat
 
 vaccine_coverage_pessimistic <- map(vaccine_formulations, ~c(0.05, 0.05))
 vaccine_coverage_central <- map(vaccine_formulations, ~c(0.1, 0.2))
-vaccine_coverage_pessimistic <- map(vaccine_formulations, ~c(0.35, 0.55))
+vaccine_coverage_optimistic <- map(vaccine_formulations, ~c(0.35, 0.55))
 
 #convert to per disease
 date_vaccine_coverage <- map(disease_map, ~date_vaccine_coverage[[.x]])
-vaccine_coverage_pessimistic <- map(disease_map, ~vaccine_coverage_central[[.x]])
+vaccine_coverage_pessimistic <- map(disease_map, ~vaccine_coverage_pessimistic[[.x]])
 vaccine_coverage_central <- map(disease_map, ~vaccine_coverage_central[[.x]])
 vaccine_coverage_optimistic <- map(disease_map, ~vaccine_coverage_optimistic[[.x]])
 

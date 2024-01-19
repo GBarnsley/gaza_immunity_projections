@@ -19,25 +19,27 @@ age_group_sizes <- c(
     #60+ don't define a size
 ) * 365 #in days
 
+age_group_sizes <- c(
+    rep(1/12, 12), #0-1 year in months
+    rep(1/12, 12), #1-2 years in months
+    1, #2-3 years
+    1, #3-4 years
+    1, #4-5 years
+    1, #5-6 years
+    4, #6-10 years
+    5, #10-15 years
+    5, #15-20 years
+    10, #20-30 years
+    10, #30-40 years
+    10, #40-50 years
+    10 #50-60 years
+    #60+ don't define a size
+) * 365 #in days
+
+
+
 #now demographic data
 #crude birth rates are per total population
-##we will weight them for our age groups using the 2006 fertility rates for gaza see palestine_fertility_rates.pdf
-#fertility_rates <- tibble(
-#    age_group_size = c(15, rep(5, 7))*365,
-#    fertility_rate = c(0, 60.6, 242.9, 273.6, 241.1, 161.8, 64.2, 7.2)
-#) %>%
-#    mutate(
-#        age_group_start = cumsum(c(0, age_group_size[-length(age_group_size)])),
-#        age_group_end = cumsum(age_group_size)
-#    ) %>%
-#    filter(
-#        age_group_start > 0
-#    )
-#
-##fit a gamma distribution (via mle)
-#ggplot(fertility_rates, aes(x = age_group_start, xend = age_group_end, y = fertility_rate, yend = fertility_rate)) +
-#    geom_segment()
-
 #for now we just use the rates per total pop and split based on proportion immune
 crude_birth_rate <- read_csv("data/raw/birth_rate.csv", show_col_types = FALSE) #CIA
 crude_birth_rate <- tibble(
