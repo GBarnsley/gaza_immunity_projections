@@ -6,9 +6,15 @@ if(!require("rmarkdown")) install.packages("rmarkdown")
 
 date_start <- as_date("2000-01-01") #also t = 0
 
-date_projection_start <- as_date("2023-10-07")
+date_crisis_start <- as_date("2023-10-07")
 
-date_projection_end <- date_projection_start + (30*6)
+date_projection_start <- as_date("2024-02-07")
+
+date_projection_end <- date_projection_start + ((6/12) * 365)
+
+#add infection and disease
+#carmen code review
+#send to francesco
 
 library(IVODE)
 library(tidyverse)

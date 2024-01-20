@@ -1,8 +1,8 @@
-apply_scenario <- function(baseline_parameters, vaccine_coverage, date_vaccine_coverage, date_start, date_projection_start, maintain_foi = TRUE) {
+apply_scenario <- function(baseline_parameters, vaccine_coverage, date_vaccine_coverage, date_start, date_crisis_start, maintain_foi = TRUE) {
     parameters <- baseline_parameters
     diseases <- names(parameters$force_of_infection)
     n_age <- length(parameters$age_group_sizes) + 1
-    t_projection <- as.numeric(date_projection_start - date_start)
+    t_projection <- as.numeric(date_crisis_start - date_start)
 
     #remove all vaccinations from the projection start date
     for (disease in diseases) {
@@ -24,7 +24,7 @@ apply_scenario <- function(baseline_parameters, vaccine_coverage, date_vaccine_c
             
             t_coverage <- which(colSums(existing_coverage) > 0)
 
-            dates_to_cover <- date_vaccine_coverage[[disease]][date_vaccine_coverage[[disease]] >= date_projection_start]
+            dates_to_cover <- date_vaccine_coverage[[disease]][date_vaccine_coverage[[disease]] >= date_crisis_start]
             t_new_coverage <- as.numeric(dates_to_cover - date_start)
 
             existing_coverage <- existing_coverage[t_existing_coverage < t_projection, ]
@@ -73,14 +73,25 @@ summarise_susceptible <- function(df) {
     total_plot <- df %>%
         group_by(scenario, date) %>%
         summarise(
-            total_immunity = 1 - (sum(immune)/sum(population)),
+            infection = 1 - (sum(immune)/sum(population)),
+            disease = 1 - (sum(immune)/sum(population)),
             .groups = "drop"
         ) %>%
         mutate(
             `Scenario:` = scenario_map1[scenario]
         ) %>%
-        ggplot(aes(x = date, y = total_immunity, color = `Scenario:`)) +
+        pivot_longer(
+            cols = c(infection, disease),
+            names_to = "type",
+            values_to = "immunity"
+        ) %>%
+        mutate(
+            type = str_to_title(type),
+            type = factor(type, levels = c("Infection", "Disease"))
+        ) %>%
+        ggplot(aes(x = date, y = immunity, color = `Scenario:`)) +
             geom_line() +
+            facet_wrap(vars(type), nrow = 1) +
             labs(x = "Date", y = "Susceptible %\n(Whole Population)", title = disease) +
             ggpubr::theme_pubclean() +
             scale_y_continuous(labels = scales::percent) +
@@ -92,16 +103,19 @@ summarise_susceptible <- function(df) {
     text_df <- df %>%
         group_by(scenario, age_group, date) %>%
         summarise(
-            total_immunity = 1 - (sum(immune)/sum(population)),
+            infection = 1 - (sum(immune)/sum(population)),
+            disease = 1 - (sum(immune)/sum(population)),
             .groups = "drop_last"
         ) %>%
         summarise(
-            susceptible = mean(total_immunity),
+            infection = mean(infection),
+            disease = mean(disease),
             .groups = "drop"
         ) %>%
         mutate(
             scenario = str_to_title(scenario),
-            susceptible = scales::percent(susceptible, accuracy = 0.1)
+            infection = scales::percent(infection, accuracy = 0.1),
+            disease = scales::percent(disease, accuracy = 0.1)
         ) %>%
         mutate(
             x_pos = as.numeric(age_group),
@@ -113,7 +127,7 @@ summarise_susceptible <- function(df) {
     
     text_plot <- text_df %>%
         transmute(
-            x_pos = x_pos, y_pos = y_pos, text = susceptible
+            x_pos = x_pos, y_pos = y_pos, text = paste0(infection, "\n", disease)
         ) %>%
         rbind(
             tibble(
@@ -127,6 +141,13 @@ summarise_susceptible <- function(df) {
                 x_pos = seq_along(unique(df$age_group)),
                 y_pos = max(text_df$y_pos) + 1,
                 text = unique(df$age_group)
+            )
+        ) %>%
+        rbind(
+            tibble(
+                x_pos = 0,
+                y_pos = max(text_df$y_pos) + 1,
+                text = paste0("Infection %\nDisease %")
             )
         ) %>%
         mutate(
@@ -149,6 +170,6 @@ summarise_susceptible <- function(df) {
     ggpubr::ggarrange(
         total_plot, text_plot,
         ncol = 1, nrow = 2,
-        heights = c(4, 1)
+        heights = c(4, 2)
     )
 }

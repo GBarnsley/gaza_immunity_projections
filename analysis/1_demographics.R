@@ -36,8 +36,6 @@ age_group_sizes <- c(
     #60+ don't define a size
 ) * 365 #in days
 
-
-
 #now demographic data
 #crude birth rates are per total population
 #for now we just use the rates per total pop and split based on proportion immune
@@ -56,7 +54,7 @@ tibble(
     complete(Date = seq(date_start, date_projection_end, by = "day")) %>%
     fill( `Crude Birth Rate`, .direction = "down") %>%
     mutate(
-        projection_period = Date >= date_projection_start
+        projection_period = Date >= date_crisis_start
     ) %>%
     saveRDS("data/derived/crude_birth_rate.rds")
 rm(crude_birth_rate)
@@ -152,7 +150,7 @@ tibble(
     complete(Date = seq(date_start, date_projection_end, by = "day")) %>%
     fill(`Crude Death Rate`, .direction = "down") %>%
     mutate(
-        projection_period = Date >= date_projection_start
+        projection_period = Date >= date_crisis_start
     ) %>%
     saveRDS("data/derived/crude_death_rates.rds")
 

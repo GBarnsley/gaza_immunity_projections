@@ -34,7 +34,7 @@ source("analysis/scenario_funcs.R")
 vaccine_formulations <- unique(disease_map)
 names(vaccine_formulations) <- vaccine_formulations
 
-date_vaccine_coverage <- map(vaccine_formulations, ~c(date_projection_start, date_projection_start + 90))
+date_vaccine_coverage <- map(vaccine_formulations, ~c(date_crisis_start, date_crisis_start + 90))
 
 vaccine_coverage_pessimistic <- map(vaccine_formulations, ~c(0.05, 0.05))
 vaccine_coverage_central <- map(vaccine_formulations, ~c(0.1, 0.2))
@@ -51,7 +51,7 @@ pessimistic_parameters <- apply_scenario(
     vaccine_coverage = vaccine_coverage_pessimistic,
     date_vaccine_coverage = date_vaccine_coverage,
     date_start = date_start,
-    date_projection_start = date_projection_start
+    date_crisis_start = date_crisis_start
 )
 
 central_parameters <- apply_scenario(
@@ -59,7 +59,7 @@ central_parameters <- apply_scenario(
     vaccine_coverage = vaccine_coverage_central,
     date_vaccine_coverage = date_vaccine_coverage,
     date_start = date_start,
-    date_projection_start = date_projection_start
+    date_crisis_start = date_crisis_start
 )
 
 optimistic_parameters <- apply_scenario(
@@ -67,7 +67,7 @@ optimistic_parameters <- apply_scenario(
     vaccine_coverage = vaccine_coverage_optimistic,
     date_vaccine_coverage = date_vaccine_coverage,
     date_start = date_start,
-    date_projection_start = date_projection_start
+    date_crisis_start = date_crisis_start
 )
 
 res <- list(

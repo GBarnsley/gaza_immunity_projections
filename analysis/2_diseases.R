@@ -17,21 +17,45 @@ names(vaccine_names) <- vaccine_names
 #really we need to adjust this FoI for vaccinated/immune i.e. susceptibles actually have a much higher FoI than the average person
 
 #notes
-#diphtheria - no cases
-#measles - few cases in 2020/2021
-#pertussis - few cases in 2022 but no data before seems to be tranmission in lebanon
-#polio - wildtype - no cases
-#polio - vaccine-derived - no cases
-#Hib disease - cases of meningitis suggests transmission
-#pneumococcal disease - will be tranmission but only meningitis cases?
-#rotavirus - no data (could use diarrhoea data?)
+#diphtheria - no cases - medium reproduction number, likely large background immunity - minor importations
+#measles - few cases in 2020/2021 - high reproduction number, likely large background immunity - minor importations
+#pertussis - few cases in 2022 but no data before seems to be tranmission in lebanon - high reproduction number, likely large background immunity - endemic (some evidence that vaccine has no impact on tranmission)
+#polio - wildtype - no cases - high reproduction number, likely large background immunity - eliminated no tranmission since mid-90s
+#polio - vaccine-derived - no cases - high reproduction number, likely large background immunity? - tranmission in Israel
+#Hib disease - cases of meningitis suggests transmission - likely low as protects against carriage (need to adjust for this, potentially first carriage -> disease)
+#pneumococcal disease - will be carriage in the population, how does this translate to immunity
+#rotavirus - nearly everyone gets infected at an early age high reproduction number, likely large background immunity - endemic
 
-foi <- list(
-    diphtheria = 0, `polio - wildtype` = 0, `polio - vaccine-derived` = 0, rotavirus = 0
-)
-tt_foi <- list(
-    diphtheria = 0, `polio - wildtype` = 0, `polio - vaccine-derived` = 0, rotavirus = 0
-)
+high_background_immunity <- c("diphtheria", "measles", "pertussis", "polio - wildtype", "rotavirus")
+names(high_background_immunity) <- high_background_immunity
+moderate_background_immunity <- c("polio - vaccine-derived", "Hib disease", "pneumococcal disease")
+names(moderate_background_immunity) <- moderate_background_immunity
+
+use_data <- c("measles", "Hib disease")
+
+endemic <- c("pertussis", "rotavirus", "pneumococcal disease")
+
+importations <- c("diphtheria")
+
+eliminated <- c("polio - wildtype", "polio - vaccine-derived")
+
+foi <- setNames(rep(0, length(eliminated)), eliminated) %>%
+    c(
+        setNames(rep(1/100000, length(importations)), importations)
+    ) %>%
+    c(
+        setNames(rep(1/(365*2), length(endemic)), endemic) #likely to at 2nd birthday
+    ) %>%
+    as.list()
+tt_foi <- map(foi, ~0)
+adjust_for_crude_foi <- map(foi, ~FALSE)
+
+#it doesn't quite make sense to model this like so, as this rates would be impacted by indirect effects of vaccinations
+foi$rotavirus <- 9/1000/365 #yearly prevalence ~900/100000 (2 years after vaccine introduction) https://doi.org/10.1371/journal.pone.0194120.g001
+#REALLY NEED TO WRITE A NEW MODEL for pnuemococcus and HiB focus on just VT carriage for now
+foi$`pneumococcal disease` <- -log(1 - (0.5/7))/(2 * 365) #pre-PCV colonisation rate roughly 50% in first years of life https://www.ncbi.nlm.nih.gov/pmc/articles/PMC3858295/
+#https://www.ncbi.nlm.nih.gov/pmc/articles/PMC3335158/
+#reduce the chance of gaining meaningful immunity by the number of serotypes
 
 IR <- read_csv("data/raw/disease_IRs.csv", show_col_types = FALSE)
 
@@ -68,6 +92,7 @@ IR <- IR %>%
     mutate(
         IR = IR/1000/365 #make per day per person
     ) %>%
+    filter(disease %in% use_data) %>%
     pivot_wider(
         names_from = disease,
         values_from = IR
@@ -75,15 +100,20 @@ IR <- IR %>%
     mutate(t = as.numeric(ymd(paste0(year, "-01-01")) - date_start)) %>% 
     arrange(t)
 #set missing pertussis to 0 (maybe set to lebanon numbers)
-IR$pertussis[is.na(IR$pertussis)] <- 0
 IR$`Hib disease`[is.na(IR$`Hib disease`)] <- 0
 
-diseases_with_data <- setdiff(vaccine_names, names(tt_foi))
-names(diseases_with_data) <- diseases_with_data
 
-tt_foi <- c(tt_foi, map(diseases_with_data, ~IR$t))
-foi <- c(foi, map(diseases_with_data, ~IR[[.x]]))
-rm(diseases_with_data, IR)
+
+names(use_data) <- use_data
+
+tt_foi <- c(tt_foi, map(use_data, ~IR$t))
+foi <- c(foi, map(use_data, ~IR[[.x]]))
+adjust_for_crude_foi <- c(adjust_for_crude_foi, map(use_data, ~TRUE))
+additional_parameters <- map(adjust_for_crude_foi, ~list(
+    prop_death = additional_parameters$prop_death,
+    adjust_for_crude_foi = .x
+))
+rm(IR, adjust_for_crude_foi, use_data, endemic, importations, eliminated)
 
 map2_dfr(foi, tt_foi, .id = "Pathogen", function(par, tt) {
     tibble(
@@ -95,7 +125,7 @@ map2_dfr(foi, tt_foi, .id = "Pathogen", function(par, tt) {
     complete(Date = seq(date_start, date_projection_end, by = "day")) %>%
     fill(`Force of Infection`, .direction = "down") %>%
     mutate(
-        projection_period = Date >= date_projection_start
+        projection_period = Date >= date_crisis_start
     ) %>%
     saveRDS("data/derived/foi.rds")
 
@@ -233,7 +263,7 @@ vaccine_coverage %>%
         values_to = "Coverage"
     ) %>%
     mutate(
-        projection_period = Date >= date_projection_start
+        projection_period = Date >= date_crisis_start
     ) %>%
     saveRDS("data/derived/vaccine_coverage.rds")
 
@@ -280,10 +310,15 @@ duration_of_immunity <- map(duration_of_immunity, ~(1/.x$central) * 365)
 #no vaccinated, shouldn't matter that much (explore)
 
 #if a disease has infections at the start then we assume some maternal and acquired immunity
-cases <- map_lgl(foi, ~.x[1] > 0)
-p_R <- rep(0.1, length(total_pop))
-p_M <- rep(0, length(total_pop)) #can't assume any atm
-S_0 <- map(cases, ~if_else(rep(.x, length(total_pop)), (1 - p_M - p_R) * total_pop, 1 * total_pop))
-R_0 <- map(cases, ~if_else(rep(.x, length(total_pop)), p_R * total_pop, 0))
-M_0 <- map(cases, ~if_else(rep(.x, length(total_pop)), p_M * total_pop, 0)[1:2])
-M_0 <- map(cases, ~NULL) #can't assume any atm
+M_0 <- map(vaccine_names, ~NULL) #can't assume any atm
+p_moderate <- 0.75
+p_high <- 0.95
+S_0 <- map(moderate_background_immunity, ~(1-p_moderate) * total_pop) %>% 
+    c(
+        map(high_background_immunity, ~(1-p_high) * total_pop)
+    )
+
+R_0 <- map(moderate_background_immunity, ~p_moderate * total_pop) %>% 
+    c(
+        map(high_background_immunity, ~p_high * total_pop)
+    )
