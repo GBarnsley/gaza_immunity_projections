@@ -74,7 +74,7 @@ summarise_susceptible <- function(df) {
         group_by(scenario, date) %>%
         summarise(
             infection = 1 - (sum(immune)/sum(population)),
-            disease = 1 - (sum(immune)/sum(population)),
+            disease = 1 - (sum(immune_disease)/sum(population)),
             .groups = "drop"
         ) %>%
         mutate(
@@ -89,10 +89,9 @@ summarise_susceptible <- function(df) {
             type = str_to_title(type),
             type = factor(type, levels = c("Infection", "Disease"))
         ) %>%
-        ggplot(aes(x = date, y = immunity, color = `Scenario:`)) +
+        ggplot(aes(x = date, y = immunity, color = `Scenario:`, linetype = type)) +
             geom_line() +
-            facet_wrap(vars(type), nrow = 1) +
-            labs(x = "Date", y = "Susceptible %\n(Whole Population)", title = disease) +
+            labs(x = "Date", y = "Susceptible %\n(Whole Population)", title = disease, type = "Protection against:") +
             ggpubr::theme_pubclean() +
             scale_y_continuous(labels = scales::percent) +
             scale_x_date(date_breaks = "1 month", date_labels = "%m-%Y") +
@@ -104,7 +103,7 @@ summarise_susceptible <- function(df) {
         group_by(scenario, age_group, date) %>%
         summarise(
             infection = 1 - (sum(immune)/sum(population)),
-            disease = 1 - (sum(immune)/sum(population)),
+            disease = 1 - (sum(immune_disease)/sum(population)),
             .groups = "drop_last"
         ) %>%
         summarise(
@@ -156,7 +155,7 @@ summarise_susceptible <- function(df) {
         ) %>%
         ggplot(aes(x = x_pos, y = y_pos, label = text, colour = as.character(y_pos))) +
             geom_text() +
-            labs(x = "", y = "") +
+            labs(x = "", y = "", title = "Average Susceptibility by age-group") +
             ggpubr::theme_pubclean() +
             theme(
                 axis.ticks.x = element_blank(),
@@ -164,6 +163,7 @@ summarise_susceptible <- function(df) {
                 axis.ticks.y = element_blank(),
                 axis.text.y = element_blank(),
                 panel.grid.major.y  = element_blank(),
+                plot.title = element_text(hjust = 0.5),
                 legend.position = "none"
             ) +
             scale_color_manual(values = cols_2)

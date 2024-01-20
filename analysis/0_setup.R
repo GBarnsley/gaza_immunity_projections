@@ -12,8 +12,8 @@ date_projection_start <- as_date("2024-02-07")
 
 date_projection_end <- date_projection_start + ((6/12) * 365)
 
-#add infection and disease
-#carmen code review
+#output table
+#carmen review
 #send to francesco
 
 library(IVODE)
