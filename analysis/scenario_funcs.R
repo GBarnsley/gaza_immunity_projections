@@ -1,6 +1,6 @@
 apply_scenario <- function(baseline_parameters, vaccine_coverage, date_vaccine_coverage, date_start, date_crisis_start, maintain_foi = TRUE) {
     parameters <- baseline_parameters
-    diseases <- names(parameters$force_of_infection)
+    diseases <- names(parameters$vaccinations)
     n_age <- length(parameters$age_group_sizes) + 1
     t_projection <- as.numeric(date_crisis_start - date_start)
 

@@ -1,5 +1,5 @@
 #What type of model
-type <- "deterministic_gz"
+type <- "dynamic_model"
 
 t_projection_starts <- as.numeric(date_projection_start - date_start)
 t_projection_ends <- as.numeric(date_projection_end - date_start)
@@ -23,8 +23,11 @@ baseline_parameters <- list(
     vaccine_efficacy_disease = vaccine_efficacy_disease,
     vaccinations = vaccinations,
     tt_vaccinations = tt_vaccinations,
+    duration_of_pre_infectious = duration_of_pre_infectious,
+    duration_of_infectious = duration_of_infectious,
     duration_of_immunity = duration_of_immunity,
     S_0 = S_0,
+    I_0 = I_0,
     R_0 = R_0,
     M_0 = M_0
 )
@@ -46,13 +49,15 @@ vaccine_coverage_pessimistic <- map(disease_map, ~vaccine_coverage_pessimistic[[
 vaccine_coverage_central <- map(disease_map, ~vaccine_coverage_central[[.x]])
 vaccine_coverage_optimistic <- map(disease_map, ~vaccine_coverage_optimistic[[.x]])
 
+maintain_foi <- FALSE #think this makes sense
+
 pessimistic_parameters <- apply_scenario(
     baseline_parameters = baseline_parameters,
     vaccine_coverage = vaccine_coverage_pessimistic,
     date_vaccine_coverage = date_vaccine_coverage,
     date_start = date_start,
     date_crisis_start = date_crisis_start,
-    maintain_foi = FALSE
+    maintain_foi = maintain_foi
 )
 
 central_parameters <- apply_scenario(
@@ -61,7 +66,7 @@ central_parameters <- apply_scenario(
     date_vaccine_coverage = date_vaccine_coverage,
     date_start = date_start,
     date_crisis_start = date_crisis_start,
-    maintain_foi = FALSE
+    maintain_foi = maintain_foi
 )
 
 optimistic_parameters <- apply_scenario(
@@ -70,7 +75,7 @@ optimistic_parameters <- apply_scenario(
     date_vaccine_coverage = date_vaccine_coverage,
     date_start = date_start,
     date_crisis_start = date_crisis_start,
-    maintain_foi = FALSE
+    maintain_foi = maintain_foi
 )
 
 res <- list(

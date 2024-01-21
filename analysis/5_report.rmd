@@ -112,20 +112,15 @@ where $D_{t}$ is the crude death rate at time $t$, $P_{a}$ is the proportional r
 
 ### Force of Infection
 ```{r foi, echo=FALSE, out.width="100%"}
-df <- readRDS_2("data/derived/foi.rds") %>%
-    mutate(
-        `Force of Infection` = `Force of Infection`*1000*365
-    ) %>%
-    group_by(Pathogen) %>%
-    filter(any(`Force of Infection` > 0))
+df <- readRDS_2("data/derived/foi.rds")
 df %>%
-    ggplot(aes(x = Date, y = `Force of Infection`, colour = Pathogen)) +
+    ggplot(aes(x = Date, y = `Basic Reproduction Number`, colour = Pathogen)) +
     geom_line() +
     ggpubr::theme_pubclean() +
     scale_x_date(date_breaks = "1 year", date_labels = "%Y") +
-    coord_cartesian(ylim = c(0, max(df$`Force of Infection`))) +
+    coord_cartesian(ylim = c(0, max(df$`Basic Reproduction Number`))) +
     geom_vline(xintercept = date_projection_start, linetype = "dashed") +
-    labs(x = "Date", y = "Yearly Force of Infection\n(per 1000)")
+    labs(x = "Date", y = "Basic Reproduction Number")
 ```
 
 Force of infection is taken from the yearly incidence rates from MoH Gaza, these are scaled to the force of infection on susceptible individual through the equation:
