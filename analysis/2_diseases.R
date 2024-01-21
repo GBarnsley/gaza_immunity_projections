@@ -15,6 +15,10 @@ names(vaccine_names) <- vaccine_names
 
 disease_parameters <- map(vaccine_names, IVODE::sample_parameters)
 
+additional_parameters <- map(vaccine_names, ~list(
+    prop_death = additional_parameters$prop_death
+))
+
 #Force of Infection data
 #really we need to adjust this FoI for vaccinated/immune i.e. susceptibles actually have a much higher FoI than the average person
 
@@ -45,16 +49,13 @@ names(importations) <- importations
 eliminated <- c("polio - wildtype", "polio - vaccine-derived")
 names(eliminated) <- eliminated
 
-foi <- list()
+foi <- setNames(rep(0, length(eliminated)), eliminated) %>% as.list()
 foi <- c(foi, map(importations, ~disease_parameters[[.x]]$R0)) #(need to think about this too)
 foi <- c(foi, map(endemic, ~disease_parameters[[.x]]$R0))
 foi <- c(foi, map(use_data, ~disease_parameters[[.x]]$R0)) #need to think about how to include the data
 
 tt_foi <- map(foi, ~0)
 
-additional_parameters <- map(foi, ~list(
-    prop_death = additional_parameters$prop_death
-))
 rm(use_data, endemic, importations)
 
 map2_dfr(foi, tt_foi, .id = "Pathogen", function(par, tt) {
