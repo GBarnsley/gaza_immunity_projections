@@ -51,7 +51,8 @@ pessimistic_parameters <- apply_scenario(
     vaccine_coverage = vaccine_coverage_pessimistic,
     date_vaccine_coverage = date_vaccine_coverage,
     date_start = date_start,
-    date_crisis_start = date_crisis_start
+    date_crisis_start = date_crisis_start,
+    maintain_foi = FALSE
 )
 
 central_parameters <- apply_scenario(
@@ -59,7 +60,8 @@ central_parameters <- apply_scenario(
     vaccine_coverage = vaccine_coverage_central,
     date_vaccine_coverage = date_vaccine_coverage,
     date_start = date_start,
-    date_crisis_start = date_crisis_start
+    date_crisis_start = date_crisis_start,
+    maintain_foi = FALSE
 )
 
 optimistic_parameters <- apply_scenario(
@@ -67,7 +69,8 @@ optimistic_parameters <- apply_scenario(
     vaccine_coverage = vaccine_coverage_optimistic,
     date_vaccine_coverage = date_vaccine_coverage,
     date_start = date_start,
-    date_crisis_start = date_crisis_start
+    date_crisis_start = date_crisis_start,
+    maintain_foi = FALSE
 )
 
 res <- list(

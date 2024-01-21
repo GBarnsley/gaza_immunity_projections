@@ -21,8 +21,8 @@ projections %>%
         scenario = scenario,
         disease_type = vaccine_type,
         date = date,
-        immune_to_infection = round(infection, 3),
-        immune_to_disease = round(disease, 3)
+        susceptible_to_infection = round(infection, 3),
+        susceptible_to_disease = round(disease, 3)
     ) %>%
     write_csv("data/output/immunity_projections.csv")
 #now format S and V for francesco
