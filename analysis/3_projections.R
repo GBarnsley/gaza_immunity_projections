@@ -1,5 +1,5 @@
 #What type of model
-type <- "deterministic_gz"
+type <- "static_model"
 
 t_projection_starts <- as.numeric(date_projection_start - date_start)
 t_projection_ends <- as.numeric(date_projection_end - date_start)
@@ -14,6 +14,8 @@ baseline_parameters <- list(
     tt_death_rates = tt_death_rates,
     birth_rates = birth_rates,
     tt_birth_rates = tt_birth_rates,
+    duration_of_infectious = NULL,
+    duration_of_pre_infectious = NULL,
     duration_of_maternal_immunity = duration_of_maternal_immunity,
     additional_parameters = additional_parameters,
     vaccine_names = vaccine_names,
@@ -26,7 +28,8 @@ baseline_parameters <- list(
     duration_of_immunity = duration_of_immunity,
     S_0 = S_0,
     R_0 = R_0,
-    M_0 = M_0
+    M_0 = M_0,
+    I_0 = NULL
 )
 
 source("analysis/scenario_funcs.R")
@@ -46,13 +49,15 @@ vaccine_coverage_pessimistic <- map(disease_map, ~vaccine_coverage_pessimistic[[
 vaccine_coverage_central <- map(disease_map, ~vaccine_coverage_central[[.x]])
 vaccine_coverage_optimistic <- map(disease_map, ~vaccine_coverage_optimistic[[.x]])
 
+maintain_foi <- TRUE
+
 pessimistic_parameters <- apply_scenario(
     baseline_parameters = baseline_parameters,
     vaccine_coverage = vaccine_coverage_pessimistic,
     date_vaccine_coverage = date_vaccine_coverage,
     date_start = date_start,
     date_crisis_start = date_crisis_start,
-    maintain_foi = FALSE
+    maintain_foi = maintain_foi
 )
 
 central_parameters <- apply_scenario(
@@ -61,7 +66,7 @@ central_parameters <- apply_scenario(
     date_vaccine_coverage = date_vaccine_coverage,
     date_start = date_start,
     date_crisis_start = date_crisis_start,
-    maintain_foi = FALSE
+    maintain_foi = maintain_foi
 )
 
 optimistic_parameters <- apply_scenario(
@@ -70,7 +75,7 @@ optimistic_parameters <- apply_scenario(
     date_vaccine_coverage = date_vaccine_coverage,
     date_start = date_start,
     date_crisis_start = date_crisis_start,
-    maintain_foi = FALSE
+    maintain_foi = maintain_foi
 )
 
 res <- list(
@@ -105,7 +110,7 @@ res$demographics %>%
     arrange(date, age_group, scenario) %>%
     saveRDS("data/derived/demographics.rds")
 
-projections <- res$projections %>%
+projections_full <- res$projections %>%
     mutate(
         age_group = factor(output_age_group_names[index[age_group]], levels = output_age_group_names, ordered = TRUE),
         date = date_start + t
@@ -119,4 +124,75 @@ projections <- res$projections %>%
     ) %>%
     arrange(date, age_group, vaccine_type, scenario)
 
-saveRDS(projections, "data/derived/projections.rds")
+saveRDS(projections_full, "data/derived/projections_full.rds")
+
+output_age_group_names <- c(
+    "0mo", "1to11mo", "2nd", "3rd", "4th", "5th", "6th", "extra"
+)
+
+output_age_group_end <- c(1/12, 1, 2, 3, 4, 5, 6, 100)
+
+model_age_group_start <- cumsum(c(0, age_group_sizes))/365
+model_age_group_end <- cumsum(c(age_group_sizes, 100*365 - sum(age_group_sizes)))/365
+
+index <- map_int(model_age_group_end, ~min(which(.x <= output_age_group_end)))
+
+projections_children <- res$projections %>%
+    mutate(
+        age_group = factor(output_age_group_names[index[age_group]], levels = output_age_group_names, ordered = TRUE),
+        date = date_start + t
+    ) %>%
+    group_by(scenario, age_group, vaccine_type, date) %>%
+    summarise(
+        population = sum(Population),
+        immune = sum(Immune),
+        immune_disease = sum(`Immune(Disease)`),
+        .groups = "drop"
+    ) %>%
+    arrange(date, age_group, vaccine_type, scenario) %>%
+    filter(age_group != "extra")
+
+saveRDS(projections_children, "data/derived/projections_children.rds")
+
+
+#projections_2 <- res$projections %>%
+#    mutate(
+#        date = date_start + t
+#    ) %>%
+#    group_by(scenario, age_group, vaccine_type, date) %>%
+#    summarise(
+#        population = sum(Population),
+#        immune = sum(Immune),
+#        immune_disease = sum(`Immune(Disease)`),
+#        .groups = "drop"
+#    ) %>%
+#    arrange(date, age_group, vaccine_type, scenario) %>%
+#    filter(date == min(date))
+#
+#susceptible_plots <- projections_2 %>%
+#    filter(age_group <= 27) %>%
+#    split(~vaccine_type) %>%
+#    map(summarise_susceptible)
+#ggsave(
+#   filename = "plots/susceptibles_og.pdf", 
+#   plot = gridExtra::marrangeGrob(susceptible_plots, nrow=1, ncol=1), 
+#   width = 15, height = 9
+#)
+#
+#projections_2 %>% filter(vaccine_type == "diphtheria" & scenario == "central" & age_group %in% seq(4,6))
+#
+#
+#pars <- central_parameters
+#pars$t_projection_starts <- NULL
+#pars$t_projection_ends <- NULL
+#pars$t <- c(0, seq(central_parameters$t_projection_starts, central_parameters$t_projection_ends, 1))
+#formatted_pars <- do.call(IVODE:::collate_parameters, pars)[[1]]
+#do.call(simulate, formatted_pars) %>%
+#    format_output(c("Immune", "Immune(Vaccine)", "Immune(Maternal)", "Population")) %>%
+#    filter(age_group %in% c(4, 5, 6)) %>%
+#    pivot_wider(names_from = compartment, values_from = value) %>% 
+#    transmute(
+#      t = t, age_group = age_group, vacc_protect = `Immune(Vaccine)`/Population, maternal_protect = `Immune(Maternal)`/Population, total_protect = Immune/Population
+#    )
+#
+#

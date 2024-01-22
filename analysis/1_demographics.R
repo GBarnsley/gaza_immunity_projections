@@ -156,8 +156,6 @@ tibble(
 
 #duration of maternal immunity
 duration_of_maternal_immunity <- (6/12) * 365 #6 months, will be convert into a number of compartments in the model
-#4 to be more compatible
-duration_of_maternal_immunity <- (4/12) * 365
 
 #Calculate total population in each age group (currently take Palestine breakdown from WPP and split by proportion of population in each area)
 age_vars <- c("0-4", "5-9", "10-14",
