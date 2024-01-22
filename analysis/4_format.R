@@ -17,7 +17,7 @@ ggsave(
 )
 
 #csv file (do weekly)
-projections_all %>% 
+projections_full %>% 
     mutate(week = floor_date(date, "week")) %>%
     group_by(scenario, vaccine_type, week) %>%
     summarise(
