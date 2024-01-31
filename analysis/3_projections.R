@@ -39,39 +39,39 @@ names(vaccine_formulations) <- vaccine_formulations
 
 date_vaccine_coverage <- map(vaccine_formulations, ~c(date_crisis_start, date_crisis_start + 90))
 
-vaccine_coverage_pessimistic <- map(vaccine_formulations, ~c(0.05, 0.05))
-vaccine_coverage_central <- map(vaccine_formulations, ~c(0.1, 0.2))
-vaccine_coverage_optimistic <- map(vaccine_formulations, ~c(0.35, 0.55))
+vaccine_coverage_escalation <- map(vaccine_formulations, ~c(0.05, 0.05))
+vaccine_coverage_status_quo <- map(vaccine_formulations, ~c(0.1, 0.2))
+vaccine_coverage_ceasefire <- map(vaccine_formulations, ~c(0.35, 0.55))
 
 #convert to per disease
 date_vaccine_coverage <- map(disease_map, ~date_vaccine_coverage[[.x]])
-vaccine_coverage_pessimistic <- map(disease_map, ~vaccine_coverage_pessimistic[[.x]])
-vaccine_coverage_central <- map(disease_map, ~vaccine_coverage_central[[.x]])
-vaccine_coverage_optimistic <- map(disease_map, ~vaccine_coverage_optimistic[[.x]])
+vaccine_coverage_escalation <- map(disease_map, ~vaccine_coverage_escalation[[.x]])
+vaccine_coverage_status_quo <- map(disease_map, ~vaccine_coverage_status_quo[[.x]])
+vaccine_coverage_ceasefire <- map(disease_map, ~vaccine_coverage_ceasefire[[.x]])
 
 maintain_foi <- TRUE
 
-pessimistic_parameters <- apply_scenario(
+escalation_parameters <- apply_scenario(
     baseline_parameters = baseline_parameters,
-    vaccine_coverage = vaccine_coverage_pessimistic,
+    vaccine_coverage = vaccine_coverage_escalation,
     date_vaccine_coverage = date_vaccine_coverage,
     date_start = date_start,
     date_crisis_start = date_crisis_start,
     maintain_foi = maintain_foi
 )
 
-central_parameters <- apply_scenario(
+status_quo_parameters <- apply_scenario(
     baseline_parameters = baseline_parameters,
-    vaccine_coverage = vaccine_coverage_central,
+    vaccine_coverage = vaccine_coverage_status_quo,
     date_vaccine_coverage = date_vaccine_coverage,
     date_start = date_start,
     date_crisis_start = date_crisis_start,
     maintain_foi = maintain_foi
 )
 
-optimistic_parameters <- apply_scenario(
+ceasefire_parameters <- apply_scenario(
     baseline_parameters = baseline_parameters,
-    vaccine_coverage = vaccine_coverage_optimistic,
+    vaccine_coverage = vaccine_coverage_ceasefire,
     date_vaccine_coverage = date_vaccine_coverage,
     date_start = date_start,
     date_crisis_start = date_crisis_start,
@@ -79,9 +79,9 @@ optimistic_parameters <- apply_scenario(
 )
 
 res <- list(
-    pessimistic = do.call(project_point_estimate, pessimistic_parameters),
-    central = do.call(project_point_estimate, central_parameters),
-    optimistic = do.call(project_point_estimate, optimistic_parameters)
+    escalation = do.call(project_point_estimate, escalation_parameters),
+    status_quo = do.call(project_point_estimate, status_quo_parameters),
+    ceasefire = do.call(project_point_estimate, ceasefire_parameters)
 ) %>%
     transpose() %>%
     map(~map_dfr(.x, function(x) x, .id = "scenario"))
@@ -178,13 +178,13 @@ saveRDS(projections_children, "data/derived/projections_children.rds")
 #   width = 15, height = 9
 #)
 #
-#projections_2 %>% filter(vaccine_type == "diphtheria" & scenario == "central" & age_group %in% seq(4,6))
+#projections_2 %>% filter(vaccine_type == "diphtheria" & scenario == "status_quo" & age_group %in% seq(4,6))
 #
 #
-#pars <- central_parameters
+#pars <- status_quo_parameters
 #pars$t_projection_starts <- NULL
 #pars$t_projection_ends <- NULL
-#pars$t <- c(0, seq(central_parameters$t_projection_starts, central_parameters$t_projection_ends, 1))
+#pars$t <- c(0, seq(status_quo_parameters$t_projection_starts, status_quo_parameters$t_projection_ends, 1))
 #formatted_pars <- do.call(IVODE:::collate_parameters, pars)[[1]]
 #do.call(simulate, formatted_pars) %>%
 #    format_output(c("Immune", "Immune(Vaccine)", "Immune(Maternal)", "Population")) %>%
