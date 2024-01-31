@@ -178,6 +178,7 @@ col_plot <- plot_df %>%
         labs(fill = "", x = "", y = "Susceptibility (%)", title = paste0("Average estimated susceptibility to vaccine preventable diseases\nin children under 6")) +
         scale_y_continuous(labels = scales::percent) +
         scale_fill_manual(values = scenario_cols)
+        
 ggsave(
     "plots/output_susceptibility_cols.pdf", col_plot, height = 10, width = 10
 )

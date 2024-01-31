@@ -1,5 +1,6 @@
 if(!require("tidyverse")) install.packages("tidyverse")
 if(!require("ggpubr")) install.packages("ggpubr")
+if(!require("viridis")) install.packages("viridis")
 if(!require("devtools")) install.packages("devtools")
 if(!require("IVODE")) devtools::install_github("GBarnsley/IVODE")
 if(!require("epimixr")) devtools::install_github("sbfnk/epimixr")
