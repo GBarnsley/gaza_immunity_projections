@@ -90,12 +90,12 @@ res <- list(
 output_age_group_names <- c(
     "0mo", "1to11mo", "12to59mo", "5to9yo", "10to14yo", "15to19yo", "20to29yo", "30to39yo", "40to49yo", "50to59yo", "60to100yo"
 )
-output_age_group_end <- c(1/12, 1, 5, 10, 15, 20, 30, 40, 50, 60, 100)
+output_age_group_end_adults <- c(1/12, 1, 5, 10, 15, 20, 30, 40, 50, 60, 100)
 
 model_age_group_start <- cumsum(c(0, age_group_sizes))/365
 model_age_group_end <- cumsum(c(age_group_sizes, 100*365 - sum(age_group_sizes)))/365
 
-index <- map_int(model_age_group_end, ~min(which(.x <= output_age_group_end)))
+index <- map_int(model_age_group_end, ~min(which(.x <= output_age_group_end_adults)))
 
 res$demographics %>%
     mutate(

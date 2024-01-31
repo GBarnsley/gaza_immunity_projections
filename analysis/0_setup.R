@@ -2,6 +2,7 @@ if(!require("tidyverse")) install.packages("tidyverse")
 if(!require("devtools")) install.packages("devtools")
 if(!require("IVODE")) devtools::install_github("GBarnsley/IVODE")
 if(!require("epimixr")) devtools::install_github("sbfnk/epimixr")
+if(!require("socialmixr")) devtools::install_github("sbfnk/epimixr")
 if(!require("rmarkdown")) install.packages("rmarkdown")
 
 date_start <- as_date("2000-01-01") #also t = 0
@@ -18,3 +19,4 @@ date_projection_end <- date_projection_start + ((6/12) * 365)
 library(IVODE)
 library(tidyverse)
 library(epimixr)
+library(socialmixr)
