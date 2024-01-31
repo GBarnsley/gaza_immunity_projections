@@ -142,3 +142,42 @@ Reff <- projections_full %>%
     convert_to_output_format_Reff()
 
 saveRDS(Reff, "data/output/output_Reff.rds")
+
+#bar graph susceptibility
+scenario_cols <- c("Escalation" = "#E69F00", "Status Quo" = "#56B4E9", "Ceasefire" = "#009E73")#replace with whater
+
+plot_df <- projections_children %>%
+    filter(age_group <= "6th") %>%
+    group_by(scenario, vaccine_type, date) %>%
+    summarise(
+        susceptibility = 1 - (sum(immune)/sum(population)),
+        susceptibility_disease = 1 - (sum(immune_disease)/sum(population)),
+        .groups = "drop_last"
+    ) %>%
+    summarise(
+        susceptibility = mean(susceptibility),
+        susceptibility_disease = mean(susceptibility_disease),
+        .groups = "drop"
+    ) %>%
+    mutate(
+        scenario = factor(scenario, levels = c("escalation", "status_quo", "ceasefire")),
+        scenario = fct_recode(scenario, "Escalation" = "escalation", "Status Quo" = "status_quo", "Ceasefire" = "ceasefire"),
+        vaccine_type = str_replace(str_to_title(vaccine_type), " ", "\n")
+    )
+
+col_plot <- plot_df %>%
+    pivot_longer(c(susceptibility, susceptibility_disease), names_to = "type", values_to = "value") %>%
+    mutate(
+        type = if_else(type == "susceptibility", "Against Infection", "Against Disease"),
+        type = factor(type, levels = c("Against Infection", "Against Disease"))
+    ) %>%
+    ggplot(aes(x = vaccine_type, y = value, fill = scenario)) +
+        geom_col(position = "dodge") +
+        ggpubr::theme_pubr() +
+        facet_wrap(vars(type), ncol = 1) +
+        labs(fill = "", x = "", y = "Susceptibility (%)", title = paste0("Average estimated susceptibility to vaccine preventable diseases\nin children under 6")) +
+        scale_y_continuous(labels = scales::percent) +
+        scale_fill_manual(values = scenario_cols)
+ggsave(
+    "plots/output_susceptibility_cols.pdf", col_plot, height = 10, width = 10
+)
