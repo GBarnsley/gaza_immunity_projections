@@ -173,3 +173,44 @@ summarise_susceptible <- function(df) {
         heights = c(4, 2)
     )
 }
+
+convert_to_output_format_inner <- function(df){
+    df  %>%
+        split(.$vaccine_type) %>%
+        map(~split(.x, .$scenario))
+}
+
+convert_to_output_format_compartments <- function(df, parameter_vars) {
+    convert_to_output_format_inner(df) %>% map(~map(.x, function(x) {
+        x %>% 
+            select(date, age_group, all_of(parameter_vars)) %>%
+            pivot_longer(all_of(parameter_vars), names_to = "immunity_type", values_to = "value") %>%
+            split(.$immunity_type) %>%
+            map(function(y) {
+                df2 <- y %>% 
+                    select(-immunity_type) %>%
+                    pivot_wider(names_from = age_group, values_from = value) %>%
+                    arrange(date) %>%
+                    select(!date) %>%
+                    as.data.frame()
+                rownames(df2) <- paste0("m", 1:nrow(df2))
+                df2
+            })
+    }))
+}
+
+convert_to_output_format_Reff <- function(df) {
+   convert_to_output_format_inner(df) %>% map(~map(.x, function(x) {
+        Reff <- x %>% 
+            select(date, Reff) %>%
+            arrange(date) %>%
+            pull(Reff)
+        names(Reff) <- paste0("m", 1:length(Reff))
+        Reff
+    }))
+}
+
+sample_uniform <- function(n, min, max) {
+    #don;t actually need this to be random
+    return(qunif(seq(0, 1, length.out = n), min, max))
+}

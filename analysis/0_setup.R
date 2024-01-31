@@ -11,7 +11,11 @@ date_crisis_start <- as_date("2023-10-07")
 
 date_projection_start <- as_date("2024-02-07")
 
-date_projection_end <- date_projection_start + ((6/12) * 365)
+projection_months <- 6
+
+date_projection_end <- date_projection_start + ((projection_months/12) * 365)
+
+N <- 1000
 
 #carmen review
 #send to francesco

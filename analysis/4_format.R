@@ -52,9 +52,33 @@ projections_children %>%
         susceptible_to_disease = round(disease, 3)
     ) %>%
     write_csv("data/output/immunity_projections_children.csv")
-#now format S and V for francesco
 
-#What just want S and V? or prop immune
+#output full results for the start of each month of simulation for francesco's simulations
+output_dates <- accumulate(1:projection_months, function(x, y) {
+    if(is.na(x)) {
+        date_projection_start
+    } else {
+        month(x) <- month(x) + 1
+        x
+    }
+}, .init = NA)[-1] #we're just ticking up one month each time
+
+final_outputs <- projections_full %>%
+    filter(
+        date %in% output_dates
+    ) %>% 
+    mutate(
+        susceptible = 1 - (immune_disease / population),
+        immune_disease_only = immune_disease / population,
+        immune = immune / population,
+    ) %>%
+    convert_to_output_format_compartments(c("susceptible", "immune_disease_only", "immune")) %>%
+    map(~list_transpose(.x)) %>%
+    list_transpose()
+
+saveRDS(final_outputs$susceptible, "data/output/output_susceptible.rds")
+saveRDS(final_outputs$immune_disease_only, "data/output/output_immune_disease_only.rds")
+saveRDS(final_outputs$immune, "data/output/output_immune.rds")
 
 #Reff Calculations using Somaliland Digaale Contact Matrix and R0 estimates
 digaale <- socialmixr::get_survey("https://zenodo.org/doi/10.5281/zenodo.5226280")
@@ -74,43 +98,47 @@ contact_data$demography$age.group
 contact_age_groups <- c(seq(10, 60, 10), 100)
 age_group_map <- map_int(output_age_group_end_adults, ~min(which(.x <= contact_age_groups)))
 
-immunity <- projections_full %>% 
-    filter(date == min(date)) %>%
-    mutate(age_group = age_group_map[as.numeric(age_group)]) %>%
-    group_by(scenario, vaccine_type, age_group) %>%
-    summarise(
-        immunity = sum(immune)/sum(population),
-        .groups = "drop"
-    ) %>%
-    arrange(age_group) %>% 
-    split(.$scenario) %>%
-    map(~split(.x, .$vaccine_type) %>% map(function(x){x$immunity}))
-
-R0 <- read_csv("data/raw/infection_parameters.csv") %>%
+R0 <- read_csv("data/raw/infection_parameters.csv", show_col_types = FALSE) %>%
     filter(parameter %in% c("r0_max", "r0_min")) %>%
     select(disease, parameter, value_gen) %>%
     pivot_wider(names_from = parameter, values_from = value_gen) %>%
     rowwise() %>%
     transmute(
-        disease = disease,
-        R0 = list(list(min = r0_min, max = r0_max))
+        vaccine_type = disease,
+        R0_min = r0_min,
+        R0_max = r0_max
+    ) %>% 
+    rbind(
+        tribble(
+            ~vaccine_type, ~R0_min, ~R0_max,
+            "Hib disease", 3, 3.5, #https://karger.com/neo/article-abstract/50/2/114/367324/Colonisation-of-Haemophilus-influenzae-and?redirectedFrom=PDF
+            "pneumococcal disease", 3, 3.5, #https://karger.com/neo/article-abstract/50/2/114/367324/Colonisation-of-Haemophilus-influenzae-and?redirectedFrom=PDF
+            "rotavirus", 28, 32 #https://elischolar.library.yale.edu/cgi/viewcontent.cgi?article=1071&context=ysphtdl
+        )
+    )
+
+Reff <- projections_full %>% 
+    filter(date %in% output_dates) %>%
+    mutate(age_group = age_group_map[as.numeric(age_group)]) %>%
+    group_by(scenario, vaccine_type, date, age_group) %>%
+    summarise(
+        immunity = sum(immune)/sum(population),
+        .groups = "drop"
     ) %>%
-    pull(R0, disease)
+    arrange(age_group) %>%
+    left_join(R0, by = "vaccine_type") %>%
+    group_by(scenario, vaccine_type, date) %>%
+    summarise(
+        Reff = list({
+            prop_immune <- epimixr::adjust_immunity(
+                contact_data$matrix,
+                immunity
+            )
+            R0s <- sample_uniform(N, unique(R0_min), unique(R0_max))
+            ecdf(R0s)
+        }),
+        .groups = "drop"
+    ) %>%
+    convert_to_output_format_Reff()
 
-R0$`Hib disease` <- list(min = 3, max = 3.5)  #https://karger.com/neo/article-abstract/50/2/114/367324/Colonisation-of-Haemophilus-influenzae-and?redirectedFrom=PDF
-R0$`pneumococcal disease` <- list(min = 3, max = 3.5)  #https://karger.com/neo/article-abstract/50/2/114/367324/Colonisation-of-Haemophilus-influenzae-and?redirectedFrom=PDF
-R0$rotavirus <- list(min = 28, max = 32) #https://elischolar.library.yale.edu/cgi/viewcontent.cgi?article=1071&context=ysphtdl
-
-Reff <- map(immunity, function(scenario) {
-    imap(scenario, function(disease, disease_name) {
-        prop_immune <- epimixr::adjust_immunity(
-            contact_data$matrix,
-            disease
-        )
-        list(
-            min = R0[[disease_name]]$min * (1 - prop_immune),
-            max = R0[[disease_name]]$max * (1 - prop_immune)
-        )
-    })
-})
-saveRDS(Reff, "data/output/Reff_at_start.rds")
+saveRDS(Reff, "data/output/output_Reff.rds")
