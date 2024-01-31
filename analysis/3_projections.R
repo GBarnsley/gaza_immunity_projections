@@ -154,7 +154,6 @@ projections_children <- res$projections %>%
 
 saveRDS(projections_children, "data/derived/projections_children.rds")
 
-
 #projections_2 <- res$projections %>%
 #    mutate(
 #        date = date_start + t
