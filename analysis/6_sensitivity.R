@@ -35,7 +35,7 @@ results <- map_dfr(fois, function(new_foi){
         )
 })
 
-colour_scale <- c(viridis::viridis(length(fois)-1, "Blues"), "black")
+colour_scale <- c(viridis::viridis(length(fois)-1), "black")
 
 names(colour_scale) <- c(fois[-length(fois)], "Model Value")
 

@@ -244,7 +244,7 @@ read_csv_2("data/raw/pop_2023_UNFPA.csv", skip = 2) %>%
 ### Immunity projections
 
 ```{r immunity, echo=FALSE, out.width="100%"}
-df <- readRDS_2("data/derived/projections.rds") %>%
+df <- readRDS_2("data/derived/projections_full.rds") %>%
     group_by(date, vaccine_type, scenario) %>%
     summarise(
         immunity = sum(immune)/sum(population),

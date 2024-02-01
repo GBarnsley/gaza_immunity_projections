@@ -19,10 +19,12 @@ date_projection_end <- date_projection_start + ((projection_months/12) * 365)
 
 N <- 1000
 
-#carmen review
-#send to francesco
-
 library(IVODE)
 library(tidyverse)
 library(epimixr)
 library(socialmixr)
+
+#make directories
+if(!dir.exists("data/output")) dir.create("data/output")
+if(!dir.exists("data/derived")) dir.create("data/derived")
+if(!dir.exists("plots")) dir.create("plots")

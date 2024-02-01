@@ -1,24 +1,3 @@
-
-age_group_sizes <- c(
-    1/12, #0-1 month
-    3/12, #1-4 months
-    8/12, #4-12 months
-    6/12, #12-18 months
-    6/12, #18-24 months
-    1, #2-3 years
-    1, #3-4 years
-    1, #4-5 years
-    1, #5-6 years
-    4, #6-10 years
-    5, #10-15 years
-    5, #15-20 years
-    10, #20-30 years
-    10, #30-40 years
-    10, #40-50 years
-    10 #50-60 years
-    #60+ don't define a size
-) * 365 #in days
-
 age_group_sizes <- c(
     rep(1/12, 12), #0-1 year in months
     rep(1/12, 12), #1-2 years in months
@@ -39,7 +18,7 @@ age_group_sizes <- c(
 #now demographic data
 #crude birth rates are per total population
 #for now we just use the rates per total pop and split based on proportion immune
-crude_birth_rate <- read_csv("data/raw/birth_rate.csv", show_col_types = FALSE) #CIA
+crude_birth_rate <- suppressMessages(read_csv("data/raw/birth_rate.csv", show_col_types = FALSE)) #CIA
 crude_birth_rate <- tibble(
     year = as.numeric(crude_birth_rate[1,-1]),
     crude_birth_rate = as.numeric(crude_birth_rate[2,-1])
@@ -162,7 +141,7 @@ age_vars <- c("0-4", "5-9", "10-14",
 "15-19", "20-24", "25-29", "30-34", "35-39", "40-44", "45-49",
 "50-54", "55-59", "60-64", "65-69", "70-74", "75-79", "80-84",
 "85-89", "90-94", "95-99", "100+")
-total_population <- read_csv("data/raw/wpp.csv", skip = 16) %>%
+total_population <- suppressMessages(read_csv("data/raw/wpp.csv", skip = 16, show_col_types = FALSE)) %>%
     filter(Year == 2000 & `Region, subregion, country or area *` == "State of Palestine" ) %>%
     mutate(
         across(all_of(age_vars), ~as.numeric(.x) * 1000)

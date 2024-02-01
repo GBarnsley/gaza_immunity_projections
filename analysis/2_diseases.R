@@ -57,7 +57,7 @@ foi$`pneumococcal disease` <- -log(1 - (0.5/7))/(2 * 365) #pre-PCV colonisation 
 #https://www.ncbi.nlm.nih.gov/pmc/articles/PMC3335158/
 #reduce the chance of gaining meaningful immunity by the number of serotypes
 
-IR <- read_csv("data/raw/disease_IRs.csv", show_col_types = FALSE)
+IR <- suppressMessages(read_csv("data/raw/disease_IRs.csv", show_col_types = FALSE))
 
 locations <- str_split_i(as.character(IR[1,-c(1:3)]), "\n", 1)
 years <- as.numeric(names(IR)[-c(1:3)])
