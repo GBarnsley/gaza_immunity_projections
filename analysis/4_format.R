@@ -144,7 +144,8 @@ Reff <- projections_full %>%
 saveRDS(Reff, "data/output/output_Reff.rds")
 
 #bar graph susceptibility
-scenario_cols <- c("Escalation" = "#E69F00", "Status Quo" = "#56B4E9", "Ceasefire" = "#009E73")#replace with whater
+
+scenario_cols <- c("Escalation" = palette_periods$escalation, "Status Quo" = palette_periods$`status quo`, "Ceasefire" = palette_periods$ceasefire)
 
 plot_df <- projections_children %>%
     filter(age_group <= "6th") %>%
@@ -160,7 +161,7 @@ plot_df <- projections_children %>%
         .groups = "drop"
     ) %>%
     mutate(
-        scenario = factor(scenario, levels = c("escalation", "status_quo", "ceasefire")),
+        scenario = factor(scenario, levels = c("ceasefire", "status_quo", "escalation")),
         scenario = fct_recode(scenario, "Escalation" = "escalation", "Status Quo" = "status_quo", "Ceasefire" = "ceasefire"),
         vaccine_type = str_replace(str_to_title(vaccine_type), " ", "\n")
     )
@@ -182,3 +183,5 @@ col_plot <- plot_df %>%
 ggsave(
     "plots/output_susceptibility_cols.pdf", col_plot, height = 10, width = 10
 )
+
+#prewar and current susceptibility (hib, pcv and rota)

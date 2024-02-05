@@ -102,8 +102,6 @@ IR <- IR %>%
 #set missing pertussis to 0 (maybe set to lebanon numbers)
 IR$`Hib disease`[is.na(IR$`Hib disease`)] <- 0
 
-
-
 names(use_data) <- use_data
 
 tt_foi <- c(tt_foi, map(use_data, ~IR$t))

@@ -28,3 +28,12 @@ library(socialmixr)
 if(!dir.exists("data/output")) dir.create("data/output")
 if(!dir.exists("data/derived")) dir.create("data/derived")
 if(!dir.exists("plots")) dir.create("plots")
+
+#colour palette
+palette_gen <- viridis(16)
+    
+# specific palette for the pre-war period, crisis to date period and three scenarios
+periods <- c("pre-war", "to date", "status quo", "escalation", "ceasefire")
+
+palette_periods <- c(list("azure4"), palette_gen[c(2, 8, 4, 12)])
+names(palette_periods) <- periods
