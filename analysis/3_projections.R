@@ -1,13 +1,15 @@
 #What type of model
 type <- "static_model"
 
+t_crisis_starts <- as.numeric(date_crisis_start - date_start)
+t_record_from <- t_crisis_starts - 30
 t_projection_starts <- as.numeric(date_projection_start - date_start)
 t_projection_ends <- as.numeric(date_projection_end - date_start)
 
 #collect parameters
 baseline_parameters <- list(
     type = type,
-    t_projection_starts = t_projection_starts,
+    t_projection_starts = t_record_from,
     t_projection_ends = t_projection_ends,
     age_group_sizes = age_group_sizes,
     death_rates = death_rates,
@@ -153,45 +155,3 @@ projections_children <- res$projections %>%
     filter(age_group != "extra")
 
 saveRDS(projections_children, "data/derived/projections_children.rds")
-
-#projections_2 <- res$projections %>%
-#    mutate(
-#        date = date_start + t
-#    ) %>%
-#    group_by(scenario, age_group, vaccine_type, date) %>%
-#    summarise(
-#        population = sum(Population),
-#        immune = sum(Immune),
-#        immune_disease = sum(`Immune(Disease)`),
-#        .groups = "drop"
-#    ) %>%
-#    arrange(date, age_group, vaccine_type, scenario) %>%
-#    filter(date == min(date))
-#
-#susceptible_plots <- projections_2 %>%
-#    filter(age_group <= 27) %>%
-#    split(~vaccine_type) %>%
-#    map(summarise_susceptible)
-#ggsave(
-#   filename = "plots/susceptibles_og.pdf", 
-#   plot = gridExtra::marrangeGrob(susceptible_plots, nrow=1, ncol=1), 
-#   width = 15, height = 9
-#)
-#
-#projections_2 %>% filter(vaccine_type == "diphtheria" & scenario == "status_quo" & age_group %in% seq(4,6))
-#
-#
-#pars <- status_quo_parameters
-#pars$t_projection_starts <- NULL
-#pars$t_projection_ends <- NULL
-#pars$t <- c(0, seq(status_quo_parameters$t_projection_starts, status_quo_parameters$t_projection_ends, 1))
-#formatted_pars <- do.call(IVODE:::collate_parameters, pars)[[1]]
-#do.call(simulate, formatted_pars) %>%
-#    format_output(c("Immune", "Immune(Vaccine)", "Immune(Maternal)", "Population")) %>%
-#    filter(age_group %in% c(4, 5, 6)) %>%
-#    pivot_wider(names_from = compartment, values_from = value) %>% 
-#    transmute(
-#      t = t, age_group = age_group, vacc_protect = `Immune(Vaccine)`/Population, maternal_protect = `Immune(Maternal)`/Population, total_protect = Immune/Population
-#    )
-#
-#

@@ -184,4 +184,31 @@ ggsave(
     "plots/output_susceptibility_cols.pdf", col_plot, height = 10, width = 10
 )
 
-#prewar and current susceptibility (hib, pcv and rota)
+#prewar and current susceptibility (hib, pcv and rota)#
+pre_war_output_dates <- seq(t_record_from + date_start, date_projection_start, by = "1 month")
+pre_war_output_dates <- pre_war_output_dates[-length(pre_war_output_dates)]
+pre_war_outputs <- projections_full %>%
+    filter(
+        date %in% pre_war_output_dates
+    ) %>% 
+    mutate(
+        susceptible = 1 - (immune_disease / population),
+        immune_disease_only = immune_disease / population,
+        immune = immune / population,
+    ) %>%
+    convert_to_output_format_compartments(c("susceptible", "immune_disease_only", "immune")) %>%
+    map(~list_transpose(.x)) %>%
+    list_transpose()
+
+pre_war_outputs <- map(
+    pre_war_outputs,
+    ~map(.x, function(x) {
+        map(x, function(y) {
+            rownames(y) <- c("m-1", paste0("intervening", 1:(length(rownames(y)) - 1)))
+            y
+        })
+    })
+)
+saveRDS(pre_war_outputs$susceptible, "data/output/output_pre_war_susceptible.rds")
+saveRDS(pre_war_outputs$immune_disease_only, "data/output/output_pre_war_immune_disease_only.rds")
+saveRDS(pre_war_outputs$immune, "data/output/output_pre_war_immune.rds")
