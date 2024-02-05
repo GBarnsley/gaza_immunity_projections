@@ -63,12 +63,11 @@ apply_scenario <- function(baseline_parameters, vaccine_coverage, date_vaccine_c
 
 summarise_susceptible <- function(df) {
     disease <- str_to_title(unique(df$vaccine_type))
-    scenario_map1 <- c(central = "Central", pessimistic = "Pessimistic", optimistic = "Optimistic")
-    scenario_map <- c(Central = 2, Pessimistic = 1, Optimistic = 3)
+    scenario_map1 <- c(escalation = "Escalation", status_quo = "Status Quo", ceasefire = "Ceasefire")
+    scenario_map <- c(`Status Quo` = 2, Escalation = 1, Ceasefire = 3)
 
-    cols <- ghibli::ghibli_palette("PonyoMedium", 3, type = "discrete")
-    names(cols) <- names(scenario_map)
-    
+    cols <- c("Escalation" = palette_periods$escalation, "Status Quo" = palette_periods$`status quo`, "Ceasefire" = palette_periods$ceasefire)
+
     #plot of total immunity
     total_plot <- df %>%
         group_by(scenario, date) %>%
@@ -112,7 +111,7 @@ summarise_susceptible <- function(df) {
             .groups = "drop"
         ) %>%
         mutate(
-            scenario = str_to_title(scenario),
+            scenario = str_to_title(str_replace(scenario, "_", " ")),
             infection = scales::percent(infection, accuracy = 0.1),
             disease = scales::percent(disease, accuracy = 0.1)
         ) %>%
