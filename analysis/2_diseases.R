@@ -35,7 +35,7 @@ use_data <- c("measles", "Hib disease")
 
 endemic <- c("pertussis", "rotavirus", "pneumococcal disease")
 
-importations <- c("diphtheria")
+importations <- c("diphtheria") #likely not elimnated asymptomatic carriers (though less transmissible?)
 
 eliminated <- c("polio - wildtype", "polio - vaccine-derived")
 
@@ -303,6 +303,13 @@ duration_of_immunity <- read_csv("data/raw/vaccine_parameters.csv", show_col_typ
     filter(disease %in% vaccine_names)
 duration_of_immunity <- setNames(duration_of_immunity$duration_of_immunity, duration_of_immunity$disease)
 duration_of_immunity <- map(duration_of_immunity, ~(1/.x$central) * 365)
+
+#0.006 per year loose immunity #https://academic.oup.com/cid/article/71/1/89/5551532?login=true effectively life long (166 years)
+duration_of_immunity$diphtheria <- 1/(0.006/365)
+#or 7% per decade https://journals.plos.org/plosbiology/article?id=10.1371/journal.pbio.2006601, effectively life long ~140
+duration_of_immunity$diphtheria <- 1/(0.07/(10*365))
+#I think these are heavily confounded that asymptomatic transmission is likely still happening (https://www.sciencedirect.com/science/article/pii/S1201971222000261 / https://www.ncbi.nlm.nih.gov/pmc/articles/PMC6097034/)
+#+ this suggests shorter protection duration
 
 #initial states
 #no vaccinated, shouldn't matter that much (explore)
