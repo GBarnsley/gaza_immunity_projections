@@ -149,7 +149,9 @@ scenario_cols <- c("Escalation" = palette_periods$escalation, "Status Quo" = pal
 
 plot_df <- projections_children %>%
     filter(age_group <= "6th") %>%
-    group_by(scenario, vaccine_type, date) %>%
+    mutate(col = "Children under 59mo") %>%
+    rbind(mutate(projections_full, col = "All ages")) %>%
+    group_by(col, scenario, vaccine_type, date) %>%
     summarise(
         susceptibility = 1 - (sum(immune)/sum(population)),
         susceptibility_disease = 1 - (sum(immune_disease)/sum(population)),
@@ -163,7 +165,13 @@ plot_df <- projections_children %>%
     mutate(
         scenario = factor(scenario, levels = c("ceasefire", "status_quo", "escalation")),
         scenario = fct_recode(scenario, "Escalation" = "escalation", "Status Quo" = "status_quo", "Ceasefire" = "ceasefire"),
-        vaccine_type = str_replace(str_to_title(vaccine_type), " ", "\n")
+        col = factor(col, levels = c("Children under 59mo", "All ages")),
+        vaccine_type = str_replace(str_to_title(vaccine_type), " ", "\n"),
+        vaccine_type = case_when(
+            vaccine_type == "Polio\n- Vaccine-Derived" ~ "Polio\n(Vaccine)",
+            vaccine_type == "Polio\n- Wildtype" ~ "Polio\n(Wildtype)",
+            TRUE ~ vaccine_type
+        )
     )
 
 col_plot <- plot_df %>%
@@ -173,15 +181,15 @@ col_plot <- plot_df %>%
         type = factor(type, levels = c("Against Infection", "Against Disease"))
     ) %>%
     ggplot(aes(x = vaccine_type, y = value, fill = scenario)) +
-        geom_col(position = "dodge") +
+        geom_col(position = "dodge", alpha = 0.5) +
         ggpubr::theme_pubr() +
-        facet_wrap(vars(type), ncol = 1) +
-        labs(fill = "", x = "", y = "Susceptibility (%)", title = paste0("Average estimated susceptibility to vaccine preventable diseases\nin children under 6")) +
+        facet_grid(rows = vars(type), cols = vars(col)) +
+        labs(fill = "", x = "", y = "Susceptibility (%)", title = paste0("Average estimated susceptibility to vaccine preventable diseases")) +
         scale_y_continuous(labels = scales::percent) +
         scale_fill_manual(values = scenario_cols)
         
 ggsave(
-    "plots/output_susceptibility_cols.pdf", col_plot, height = 10, width = 10
+    "plots/output_susceptibility_cols.png", col_plot, height = 10, width = 17
 )
 
 #prewar and current susceptibility (hib, pcv and rota)#
