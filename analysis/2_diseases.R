@@ -111,7 +111,7 @@ additional_parameters <- map(adjust_for_crude_foi, ~list(
     prop_death = additional_parameters$prop_death,
     adjust_for_crude_foi = .x
 ))
-rm(IR, adjust_for_crude_foi, use_data, endemic, importations, eliminated)
+rm(IR, adjust_for_crude_foi)
 
 map2_dfr(foi, tt_foi, .id = "Pathogen", function(par, tt) {
     tibble(
@@ -327,3 +327,46 @@ R_0 <- map(moderate_background_immunity, ~p_moderate * total_pop) %>%
     c(
         map(high_background_immunity, ~p_high * total_pop)
     )
+
+#csv of new parameters
+mutate(as_tibble(duration_of_immunity), parameter = "Duration of Immunity (Years)") %>%
+    rbind(
+        mutate(as_tibble(vaccine_efficacy), parameter = "Vaccine Efficacy (Infection)"),
+        mutate(as_tibble(vaccine_efficacy_disease), parameter = "Vaccine Efficacy (Disease)")
+    ) %>%
+    pivot_longer(
+        cols = -parameter,
+        names_to = "Disease",
+        values_to = "Value"
+    ) %>%
+    rbind(
+        tibble(
+            Disease = use_data,
+            Value = "Use Data"
+        ) %>% 
+        rbind(
+            tibble(
+                Disease = endemic,
+                Value = "Endemic"
+            ),
+            tibble(
+                Disease = importations,
+                Value = "Importations"
+            ),
+            tibble(
+                Disease = eliminated,
+                Value = "Eliminated"
+            )
+        ) %>%
+        mutate(parameter = "Force of Infection Assumption")
+    ) %>%
+    pivot_wider(
+        names_from = parameter,
+        values_from = Value
+    ) %>%
+    mutate(
+        `Duration of Immunity (Years)` = as.numeric(`Duration of Immunity (Years)`)/365,
+        `Vaccine Efficacy (Infection)` = as.numeric(`Vaccine Efficacy (Infection)`),
+        `Vaccine Efficacy (Disease)` = as.numeric(`Vaccine Efficacy (Disease)`)
+    ) %>%
+    write_csv("data/output/output_parameters.csv")
